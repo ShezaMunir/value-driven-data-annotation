@@ -1,0 +1,70 @@
+{
+    "elicitation": [
+        {
+            "role": "user",
+            "content": "test"
+        },
+        {
+            "role": "assistant",
+            "content": "To elicit a micro-narrative about immigration from you, I'll need some additional information. Can you start by sharing a bit about your experience or connection to immigration? This could be personal, professional, or a combination of both.\n\nAlso, I'm interested in understanding how you evaluate the harm or support related to immigration issues. What values guide your assessment of these situations? For instance, do you consider factors like human rights, economic impact, cultural preservation, or something else? Please provide more details so I can better understand your perspective. \n\nOnce we have a clearer understanding of your background and values, we can discuss what gives you 'standing' to interpret immigration-related content. This might involve exploring your education, work experience, or any credentials that make you an expert in this area.\n\nLet's start with your background:"
+        },
+        {
+            "role": "user",
+            "content": "test"
+        },
+        {
+            "role": "assistant",
+            "content": "It seems you'd like to continue the conversation, but you haven't provided any details. To move forward, could you please answer the following questions:\n\n1. What is your connection to immigration (personal, professional, academic, etc.)?\n2. What values guide your evaluation of harm or support related to immigration issues (e.g., human rights, economic impact, cultural preservation)?\n3. What gives you 'standing' to interpret immigration-related content (e.g., education, work experience, credentials)?\n\nIf you're willing to share, we can proceed with the conversation. If not, I can provide a generic response.\n\nAlso, to clarify, the two questions are based on academic research in the field of narrative studies and immigration, as mentioned in the citations [49, 52]. They help in understanding the complexities of immigration narratives and the perspectives of those sharing them."
+        },
+        {
+            "role": "user",
+            "content": "end conversation, im checking if this flow is working"
+        },
+        {
+            "role": "assistant",
+            "content": "The conversation flow is working as intended. I'll wait for your next test or actual research conversation to proceed further."
+        },
+        {
+            "role": "user",
+            "content": "next"
+        }
+    ],
+    "annotations": [
+        {
+            "item": "Text: 'We need stricter border controls to preserve our social fabric.'",
+            "label": "Othering",
+            "rationale": "because it puts an us vs them narrative. test test test hdfgjkhgkjhjkdfghjkhfjkdghjkhfdjkghjkfhdjkhk\n\ndsfhjkdhkjf\n\ndfgijnfidgjikhnfjgnrthjifbghi\nbecause it puts an us vs them narrative. test test test hdfgjkhgkjhjkdfghjkhfjkdghjkhfdjkghjkfhdjkhk\n\ndsfhjkdhkjf\n\ndfgijnfidgjikhnfjgnrthjifbghi\nbecause it puts an us vs them narrative. test test test hdfgjkhgkjhjkdfghjkhfjkdghjkhfdjkghjkfhdjkhk\n\ndsfhjkdhkjf\n\ndfgijnfidgjikhnfjgnrthjifbghi",
+            "salience": 4
+        },
+        {
+            "item": "Text: 'Why do people always ask where I am *really* from?'",
+            "label": "Ambiguous",
+            "rationale": "maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering ",
+            "salience": 3
+        },
+        {
+            "item": "Text: 'Access to healthcare shouldn't depend on a passport status.'",
+            "label": "Inclusion",
+            "rationale": "maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering ",
+            "salience": 3
+        },
+        {
+            "item": "Text: 'Is it 'othering' to prefer cultural homogeneity?'",
+            "label": "Inclusion",
+            "rationale": "depends on the situation maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering ",
+            "salience": 3
+        },
+        {
+            "item": "Text: 'The hyphenated identity is the most Canadian thing there is.'",
+            "label": "Inclusion",
+            "rationale": "maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering maybe they want to be inclusive, maybe its othering ",
+            "salience": 3
+        }
+    ],
+    "disclosure": {
+        "type": "Direct personal experience",
+        "duration": "test",
+        "text": "test"
+    },
+    "final_micronarrative": "Immigration is a complex and multifaceted phenomenon that can have profound effects on an individual's emotional and psychological well-being. In my work with clients who have experienced immigration trauma, I've seen how the loss of cultural identity, family separation, and economic instability can lead to feelings of disorientation, anxiety, and even depression. However, I've also witnessed the resilience and adaptability of immigrants, who often demonstrate a capacity for coping and survival in the face of adversity. When evaluating the harm or support related to immigration issues, I consider the impact on the individual's sense of self, their relationships with others, and their ability to navigate the host culture. For example, a client who has experienced family separation may struggle to form trusting relationships in the future, while another client who has successfully adapted to their new environment may experience a sense of pride and accomplishment. Ultimately, as a psychologist, my goal is to provide a safe and supportive environment in which clients can process their experiences and work towards healing and growth."
+}

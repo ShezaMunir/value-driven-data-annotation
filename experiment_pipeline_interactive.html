@@ -1,0 +1,172 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:16px 0;font-family:var(--font-sans)}
+.tabs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}
+.tab{flex:0 0 auto;padding:7px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid transparent;color:var(--color-text-secondary);background:var(--color-background-secondary);transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--color-text-primary)}
+.tab.active{color:#fff;border-color:transparent}
+.panel{margin-top:14px;border-radius:12px;border:1px solid var(--color-border-tertiary);overflow:hidden}
+.panel-head{padding:16px 20px 14px;display:flex;align-items:flex-start;gap:14px}
+.phase-num{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;color:#fff}
+.panel-title{font-size:15px;font-weight:500;color:var(--color-text-primary);line-height:1.3}
+.panel-sub{font-size:12px;color:var(--color-text-secondary);margin-top:3px;line-height:1.5}
+.panel-body{padding:0 20px 18px}
+.io-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.badge{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:500}
+.steps-list{display:flex;flex-direction:column;gap:0}
+.step-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-border-tertiary);align-items:flex-start}
+.step-row:last-child{border-bottom:none}
+.step-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;margin-top:1px;color:#fff}
+.step-text{font-size:13px;color:var(--color-text-primary);line-height:1.5;flex:1}
+.step-note{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.arrow-down{text-align:center;padding:6px 0;color:var(--color-text-tertiary);font-size:16px}
+.feeds-into{margin-top:14px;padding:10px 14px;border-radius:8px;background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px}
+.feeds-into span{color:var(--color-text-primary);font-weight:500}
+</style>
+
+<div class="wrap">
+<div class="tabs" id="tabs"></div>
+<div id="panel"></div>
+</div>
+
+<script>
+const phases = [
+  {
+    id:1, label:"Dataset curation", color:"#534AB7",
+    title:"Phase 1 — Dataset curation + LLM group identification",
+    sub:"Before recruitment, identify who should annotate and why.",
+    input:"Research topic + annotation task description",
+    output:"2 curated datasets · 4–5 annotator groups per dataset · experience-vector schema",
+    steps:[
+      {t:"Select 2 datasets", n:"Choose domains where lived experience cannot be inferred from demographics (e.g. immigration + belonging, mental health language).", c:"#534AB7"},
+      {t:"LLM group identification", n:"Prompt an LLM: for this task, identify 4–5 groups whose lived experience leads to systematically different interpretations. Specify connection type (participation / advocacy / expertise) for each.", c:"#534AB7"},
+      {t:"Build experience-vector schema", n:"For each dataset, define the binary experience-signal dimensions used in Phase 4 scoring (e.g. [immigrant=1, discrimination=1, healthcare=0]).", c:"#534AB7"},
+      {t:"Curate annotation items", n:"30–40 items per dataset from natural sources (Reddit, Twitter, news comments). Ensure subjective interpretive dimension is irreducibly tied to experience.", c:"#534AB7"},
+    ],
+    feeds:"Phase 2 — Prolific screener criteria come directly from the identified groups"
+  },
+  {
+    id:2, label:"Recruitment", color:"#185FA5",
+    title:"Phase 2 — Prolific targeted recruitment",
+    sub:"Two-stage process separating broad targeting from positionality capture.",
+    input:"4–5 identified groups per dataset + random baseline stratum",
+    output:"140–160 consented participants with self-disclosed connection type",
+    steps:[
+      {t:"Stage 1 — Prolific pre-screeners", n:"Target ~30–40 participants per group using Prolific custom screeners (not demographic buckets). Add ~30 random-sample baseline with no topical pre-filter.", c:"#185FA5"},
+      {t:"Stage 2 — Self-disclosure survey", n:"Before elicitation: collect connection type (direct / advocacy / expertise / none), connection duration, and one voluntary sentence of context. Participants define their own connection.", c:"#185FA5"},
+      {t:"Ethics + consent", n:"IRB-approved protocol. Participants informed that their narrative will be used to compute a positionality score and that the score is never shared back with them.", c:"#185FA5"},
+    ],
+    feeds:"Phase 3 — All consented participants proceed to the LLM elicitation interface"
+  },
+  {
+    id:3, label:"Elicitation", color:"#0F6E56",
+    title:"Phase 3 — AI-guided lived experience elicitation",
+    sub:"Two-pass Streamlit interface extracts a structured positionality profile per annotator.",
+    input:"Consented participant + dataset-specific scenario vignette",
+    output:"Micronarrative (200–300 words) · full transcript · authority rationale",
+    steps:[
+      {t:"Pass 1 — Scenario injection", n:"Present a domain-specific hypothetical vignette. Ask: what stands out? Does this connect to your life? What values guide your judgment here?", c:"#0F6E56"},
+      {t:"Pass 1 — Extractive questioning", n:"LLM probes for depth and specificity. Goal: surface interpretive frameworks forged by experience, not surface opinions.", c:"#0F6E56"},
+      {t:"Pass 2 — Authority rationale", n:"Ask explicitly: what gives you standing to interpret content like this? What makes your perspective specific or valuable? This feeds the ReasoningQuality scoring component.", c:"#0F6E56"},
+      {t:"Micronarrative synthesis", n:"LLM synthesizes both passes into a structured 200–300 word positionality profile. Store full transcript + micronarrative. Both are used downstream.", c:"#0F6E56"},
+    ],
+    feeds:"Phase 4 — Micronarrative is embedded and scored for annotator–task alignment"
+  },
+  {
+    id:4, label:"Alignment scoring", color:"#854F0B",
+    title:"Phase 4 — Multi-component alignment scoring",
+    sub:"Compute continuous score S per annotator-task pair. S replaces the control/experimental group split.",
+    input:"Micronarrative (V_annot) · task description + codebook (V_data)",
+    output:"Score S per participant — used as continuous predictor throughout analysis",
+    steps:[
+      {t:"S₁ — Semantic similarity (SBERT)", n:"Cosine similarity between task description embedding and micronarrative embedding. Use all-mpnet-base-v2 (fine-tuned for meaning-closeness, not topic clustering). Weight w₁.", c:"#854F0B"},
+      {t:"S₂ — Experience overlap", n:"Binary vector dot product: [signal₁, signal₂, ...] for both task and annotator. Captures hard lived-experience overlap defined per dataset. Weight w₂.", c:"#854F0B"},
+      {t:"S₃ — Perspective alignment", n:"LLM extracts stance on topic-relevant value dimensions (harm sensitivity, institutional trust, in-group solidarity) from Pass 1. Cosine against dataset reference profile. Weight w₃.", c:"#854F0B"},
+      {t:"S₄ — Reasoning quality", n:"LLM scores micronarrative on depth, consistency, and contextual specificity (1–5 each). Normalized to 0–1. Weight w₄.", c:"#854F0B"},
+      {t:"Composite score", n:"S = w₁·S₁ + w₂·S₂ + w₃·S₃ + w₄·S₄. Start with equal weights (0.25). Run ablation across weight configs. Validate against researcher-rated 'depth of connection' on held-out subset.", c:"#854F0B"},
+    ],
+    feeds:"Phase 5 — All participants annotate regardless of score; S becomes the covariate"
+  },
+  {
+    id:5, label:"Annotation", color:"#3B6D11",
+    title:"Phase 5 — Annotation + rationale collection",
+    sub:"Collect labels, rationales, confidence, and positionality salience per item.",
+    input:"30–40 dataset items per participant",
+    output:"Label · free-text rationale · confidence (1–5) · positionality salience (1–5) — per item",
+    steps:[
+      {t:"Label", n:"Primary categorical annotation (e.g. supportive / neutral / harmful; inclusive / excluding / ambiguous). Defined per dataset codebook.", c:"#3B6D11"},
+      {t:"Rationale", n:"2–4 sentence free-text explanation. Prompt: 'Why did you choose this label? What in the text led you here?' This is the raw material for future rationale-clustering aggregation.", c:"#3B6D11"},
+      {t:"Confidence", n:"1–5 Likert: how confident are you in this label? Used as control variable in regression.", c:"#3B6D11"},
+      {t:"Positionality salience", n:"1–5 Likert: how much did your own experience influence this judgment? Enables analysis of when annotators themselves feel LE matters most.", c:"#3B6D11"},
+    ],
+    feeds:"Phase 6 — Labels + rationales + S scores feed the full quantitative and qualitative analysis"
+  },
+  {
+    id:6, label:"Analysis", color:"#993C1D",
+    title:"Phase 6 — Analysis + future work layer",
+    sub:"Treat S as a continuous predictor. Two analysis tracks: quantitative regression + qualitative close reading.",
+    input:"Labels · rationales · S scores · confidence · connection type",
+    output:"RQ1–RQ2 findings · rationale corpus (future work) · striking-cases evidence for feminist HCI argument",
+    steps:[
+      {t:"RQ1 — Label divergence regression", n:"Regress Jensen-Shannon divergence (from full-sample distribution) on S, controlling for confidence and domain. Tests whether LE alignment predicts who identifies harm and nuance.", c:"#993C1D"},
+      {t:"RQ2 — Rationale depth regression", n:"LLM-score all rationales for depth, specificity, and consistency. Regress rationale quality scores on S. Tests whether higher alignment produces richer interpretive reasoning.", c:"#993C1D"},
+      {t:"Intra-group agreement", n:"Compute Krippendorff's α within alignment quartiles. Hypothesis: high-S annotators show higher internal agreement, consistent with shared interpretive frameworks rather than noise.", c:"#993C1D"},
+      {t:"Qualitative close reading", n:"Top 10% and bottom 10% of S scores. Close-read rationales on the 5 most contested items. This gives the 'striking cases' where LE demonstrably shaped interpretation.", c:"#993C1D"},
+      {t:"Future — Positionality collapse (RQ3)", n:"Three-way comparison: (A) high-S human annotations, (B) LLM without scaffolding, (C) LLM prompted with micronarrative. Tests whether LLM annotations collapse toward majority-demographic baseline.", c:"#993C1D"},
+    ],
+    feeds:"Paper contribution: lived experience alignment predicts both label divergence and rationale depth"
+  },
+];
+
+function render(idx){
+  const p = phases[idx];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.getElementById('panel').innerHTML = `
+<div class="panel">
+  <div class="panel-head" style="background:${p.color}18;border-bottom:1px solid ${p.color}30">
+    <div class="phase-num" style="background:${p.color}">${p.id}</div>
+    <div>
+      <div class="panel-title">${p.title}</div>
+      <div class="panel-sub">${p.sub}</div>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="io-row" style="margin-top:14px">
+      <span style="font-size:11px;font-weight:500;color:var(--color-text-secondary);padding-top:4px">Input:</span>
+      <span class="badge" style="background:${p.color}18;color:${p.color}">${p.input}</span>
+    </div>
+    <div class="steps-list">
+      ${p.steps.map((s,i)=>`
+      <div class="step-row">
+        <div class="step-dot" style="background:${s.c}">${i+1}</div>
+        <div>
+          <div class="step-text" style="font-weight:500">${s.t}</div>
+          <div class="step-note">${s.n}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="io-row" style="margin-top:14px">
+      <span style="font-size:11px;font-weight:500;color:var(--color-text-secondary);padding-top:4px">Output:</span>
+      <span class="badge" style="background:#63992218;color:#3B6D11">${p.output}</span>
+    </div>
+    <div class="feeds-into">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M4 9l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Feeds into:</span> ${p.feeds}
+    </div>
+  </div>
+</div>`;
+}
+
+const tabsEl = document.getElementById('tabs');
+phases.forEach((p,i)=>{
+  const t = document.createElement('div');
+  t.className='tab';
+  t.textContent=`${p.id}. ${p.label}`;
+  t.style.setProperty('--c',p.color);
+  t.onclick=()=>render(i);
+  tabsEl.appendChild(t);
+  document.styleSheets[0].insertRule(`.tab.active:nth-child(${i+1}){background:${p.color}}`,0);
+});
+
+render(0);
+</script>
