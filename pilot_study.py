@@ -47,13 +47,24 @@ COUNTERBALANCE: Version B runs annotation → elicitation for ~7/15 participants
   Comparing rationale depth + label distribution = ACL methodological contribution.
 """
 
+# import streamlit as st
+# import json
+# import os
+# import re
+# import requests
+# from datetime import datetime
+# from huggingface_hub import InferenceClient
+# from streamlit_gsheets import GSheetsConnection
+# import pandas as pd
+
 import streamlit as st
 import json
-import os
 import re
-import requests
+import random
 from datetime import datetime
 from huggingface_hub import InferenceClient
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -69,7 +80,7 @@ except KeyError:
 client = InferenceClient(api_key=HF_TOKEN)
 # HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
 HF_API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct"
-STORAGE_DIR = "pilot_data"
+# STORAGE_DIR = "pilot_data"
 
 # ─── HatEval Datapoints ───────────────────────────────────────────────────────
 # Source: Basile et al. (2019), SemEval-2019 Task 5, English training split.
@@ -252,25 +263,13 @@ SCENARIOS = [
 
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
-def get_participant_dir(name: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]", "_", name.strip().lower())
-    path = os.path.join(STORAGE_DIR, safe)
-    os.makedirs(path, exist_ok=True)
-    return path
-
-
-def load_participant(name: str) -> dict:
-    d = get_participant_dir(name)
-    fp = os.path.join(d, "session.json")
-    if os.path.exists(fp):
-        with open(fp) as f:
-            return json.load(f)
-    existing = [x for x in os.listdir(STORAGE_DIR) if os.path.isdir(os.path.join(STORAGE_DIR, x))]
-    scenario_idx = (len(existing) - 1) % len(SCENARIOS)
+def init_participant(name: str) -> dict:
+    """Initializes a new session state for a participant purely in memory."""
     return {
         "name": name,
         "created_at": datetime.utcnow().isoformat(),
-        "scenario_id": SCENARIOS[scenario_idx]["id"],
+        # Randomly assign a scenario to balance the distribution
+        "scenario_id": random.choice(SCENARIOS)["id"],
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],
@@ -279,20 +278,54 @@ def load_participant(name: str) -> dict:
         "version": "A",
     }
 
-
-def save_participant(data: dict):
-    d = get_participant_dir(data["name"])
-    with open(os.path.join(d, "session.json"), "w") as f:
-        json.dump(data, f, indent=2)
-
-
 def get_scenario(sid: str) -> dict:
     return next(s for s in SCENARIOS if s["id"] == sid)
-
 
 def get_datapoints(sid: str) -> list:
     ids = set(get_scenario(sid)["hateval_ids"])
     return [d for d in HATEVAL_DATAPOINTS if d["id"] in ids]
+
+# def get_participant_dir(name: str) -> str:
+#     safe = re.sub(r"[^a-zA-Z0-9_-]", "_", name.strip().lower())
+#     path = os.path.join(STORAGE_DIR, safe)
+#     os.makedirs(path, exist_ok=True)
+#     return path
+
+
+# def load_participant(name: str) -> dict:
+#     d = get_participant_dir(name)
+#     fp = os.path.join(d, "session.json")
+#     if os.path.exists(fp):
+#         with open(fp) as f:
+#             return json.load(f)
+#     existing = [x for x in os.listdir(STORAGE_DIR) if os.path.isdir(os.path.join(STORAGE_DIR, x))]
+#     scenario_idx = (len(existing) - 1) % len(SCENARIOS)
+#     return {
+#         "name": name,
+#         "created_at": datetime.utcnow().isoformat(),
+#         "scenario_id": SCENARIOS[scenario_idx]["id"],
+#         "workflow_stage": "disclosure",
+#         "disclosure": {},
+#         "elicitation": [],
+#         "micronarrative": "",
+#         "annotations": [],
+#         "version": "A",
+#     }
+
+
+# def save_participant(data: dict):
+#     d = get_participant_dir(data["name"])
+#     with open(os.path.join(d, "session.json"), "w") as f:
+#         json.dump(data, f, indent=2)
+
+
+# def get_scenario(sid: str) -> dict:
+#     return next(s for s in SCENARIOS if s["id"] == sid)
+
+
+# def get_datapoints(sid: str) -> list:
+#     ids = set(get_scenario(sid)["hateval_ids"])
+#     return [d for d in HATEVAL_DATAPOINTS if d["id"] in ids]
 
 # ─── LLM ──────────────────────────────────────────────────────────────────────
 
@@ -439,19 +472,19 @@ def inject_styles():
     .step-label { font-size: 0.71rem; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
     div[data-testid="stChatMessage"] { background: transparent !important; }
     </style>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('paste', function(e) {
-        e.preventDefault();
-        alert("Please respond in your own words — we’re interested in your reasoning, not correctness.");
-        });
-    });
-    </script>
-    <script>
-    document.addEventListener('copy', function(e) {
-        e.preventDefault();
-        });
-    </script>
+    # <script>
+    # document.addEventListener('DOMContentLoaded', function() {
+    # document.addEventListener('paste', function(e) {
+    #     e.preventDefault();
+    #     alert("Please respond in your own words — we’re interested in your reasoning, not correctness.");
+    #     });
+    # });
+    # </script>
+    # <script>
+    # document.addEventListener('copy', function(e) {
+    #     e.preventDefault();
+    #     });
+    # </script>
     """, unsafe_allow_html=True)
     
 
@@ -465,7 +498,42 @@ def prog(step, total):
 def main():
     st.set_page_config(page_title="Immigration & Belonging — Pilot Study", layout="centered", page_icon="🗣")
     inject_styles()
-    os.makedirs(STORAGE_DIR, exist_ok=True)
+    # os.makedirs(STORAGE_DIR, exist_ok=True)
+
+    # # Sign-in
+    # if "participant_name" not in st.session_state:
+    #     st.markdown("<div class='step-label'>Pilot Study · Version A</div>", unsafe_allow_html=True)
+    #     st.title("Immigration & Belonging")
+    #     st.markdown("*A positionality-aware annotation study*")
+    #     st.markdown("---")
+    #     st.markdown(
+    #         "This study takes about **15–20 minutes**. You'll first share a bit about your own "
+    #         "perspective on immigration and belonging, then annotate a small set of social media posts."
+    #     )
+    #     name = st.text_input("Enter your first name or a pseudonym — or the same name as before (if you have done this pilot study before) to continue:")
+    #     if st.button("Begin →", type="primary") and name.strip():
+    #         st.session_state.participant_name = name.strip()
+    #         st.session_state.pdata = load_participant(name.strip())
+    #         st.rerun()
+    #     return
+
+    # if "pdata" not in st.session_state:
+    #     st.session_state.pdata = load_participant(st.session_state.participant_name)
+
+    # data = st.session_state.pdata
+    # scenario = get_scenario(data["scenario_id"])
+    # stage = data["workflow_stage"]
+
+    # with st.sidebar:
+    #     st.markdown(f"**{data['name']}**")
+    #     st.markdown(f"*{scenario['theme']}*")
+    #     labels = {"disclosure": "1 — Background", "elicitation_chat": "2 — Your experience",
+    #               "synthesis": "3 — Your narrative", "annotation": "4 — Annotations", "complete": "✓ Done"}
+    #     st.caption(labels.get(stage, stage))
+    #     st.markdown("---")
+    #     if st.button("Save & pause"):
+    #         save_participant(data)
+    #         st.success("Saved. Return any time with the same name.")
 
     # Sign-in
     if "participant_name" not in st.session_state:
@@ -477,15 +545,15 @@ def main():
             "This study takes about **15–20 minutes**. You'll first share a bit about your own "
             "perspective on immigration and belonging, then annotate a small set of social media posts."
         )
-        name = st.text_input("Enter your first name or a pseudonym — or the same name as before (if you have done this pilot study before) to continue:")
+        name = st.text_input("Enter your first name or a pseudonym:")
         if st.button("Begin →", type="primary") and name.strip():
             st.session_state.participant_name = name.strip()
-            st.session_state.pdata = load_participant(name.strip())
+            st.session_state.pdata = init_participant(name.strip())
             st.rerun()
         return
 
     if "pdata" not in st.session_state:
-        st.session_state.pdata = load_participant(st.session_state.participant_name)
+        st.session_state.pdata = init_participant(st.session_state.participant_name)
 
     data = st.session_state.pdata
     scenario = get_scenario(data["scenario_id"])
@@ -498,10 +566,8 @@ def main():
                   "synthesis": "3 — Your narrative", "annotation": "4 — Annotations", "complete": "✓ Done"}
         st.caption(labels.get(stage, stage))
         st.markdown("---")
-        if st.button("Save & pause"):
-            save_participant(data)
-            st.success("Saved. Return any time with the same name.")
-
+        st.caption("Data is temporarily held in memory and saved securely at the end.")
+        
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
     if stage == "disclosure":
         st.markdown("<div class='step-label'>Step 1 of 4</div>", unsafe_allow_html=True)
@@ -603,7 +669,7 @@ def main():
             st.markdown(
                 f"<div class='tweet-card'>"
                 f"<span class='meta-pill'>Post {idx+1} of {len(datapoints)}</span>"
-                f"<span class='meta-pill'>ambiguity score: {dp['combined_score']:.2f}</span>"
+                # f"<span class='meta-pill'>ambiguity score: {dp['combined_score']:.2f}</span>"
                 f"<br><br>{dp['text']}</div>",
                 unsafe_allow_html=True,
             )
