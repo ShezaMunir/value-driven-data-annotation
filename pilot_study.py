@@ -805,7 +805,7 @@ def main():
             "The perspectives you bring — including your background and lived experience — "
             "are what makes this kind of research meaningful."
         )
-        st.caption("Pilot study by Sheza Munir · Data stored locally · You may close this window.")
+        st.caption("Pilot study by Sheza Munir · Data stored · You may close this window.")
 
 
 if __name__ == "__main__":
