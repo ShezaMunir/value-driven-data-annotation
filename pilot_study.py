@@ -53,11 +53,22 @@ import os
 import re
 import requests
 from datetime import datetime
+from huggingface_hub import InferenceClient
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
-HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+# HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
+# Safely fetch the token
+try:
+    HF_TOKEN = st.secrets["HF_TOKEN"]
+except KeyError:
+    # Fallback to local environment variable if secrets aren't set
+    HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
+
+# Initialize the Hugging Face client
+client = InferenceClient(api_key=HF_TOKEN)
+# HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+HF_API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct"
 STORAGE_DIR = "pilot_data"
 
 # ─── HatEval Datapoints ───────────────────────────────────────────────────────
@@ -122,33 +133,32 @@ SCENARIOS = [
         "id": "A",
         "theme": "Borders, Safety & Who Belongs",
         "vignette": (
-            "In many countries, debates about immigration have become inseparable from debates "
-            "about national identity — who counts as a 'real' citizen, whether borders should be "
-            "fortified or opened, and how to talk about crime and safety without stoking fear. "
-            "These conversations happen in parliaments, on social media, and at kitchen tables. "
-            "For some people, they are abstract political questions. "
-            "For others, they touch directly on their own sense of place, safety, and belonging — "
-            "or on the experiences of people they love."
+            "A local community board is holding a heated town hall meeting about a proposed temporary "
+            "housing facility for undocumented migrants. Outside the building, two groups have gathered. "
+            "One group holds signs demanding strict border enforcement, shouting that the town must "
+            "prioritize local safety and resources first. The other group is distributing hot tea and "
+            "holding banners that read 'No one is illegal.' As everyday residents walk past the crowd "
+            "to get to the grocery store next door, the tension in the air is palpable, forcing everyone "
+            "to silently choose a side, engage, or just keep their heads down."
         ),
         "elicitation_focus": "personal safety, national identity, belonging, or community ties",
         "hateval_ids": [4375, 4088, 1185, 3104, 4149],
         "opening_q": (
             "Reading through that passage — what stands out to you first? "
-            "Not what you think you should notice, but what actually catches your attention."
+            "Is there something you connect with on a personal level?"
         ),
     },
     {
         "id": "B",
         "theme": "Crisis, Suffering & Who We Choose to See",
         "vignette": (
-            "Every year, thousands of people make dangerous journeys across borders — "
-            "fleeing war, persecution, or poverty. Their stories reach the public through "
-            "news headlines, policy debates, and social media. Some people respond with calls "
-            "for solidarity and systemic change. Others argue for stricter controls or question "
-            "the scale of responsibility a country can or should take on. "
-            "In between, there are millions of individual human stories that rarely make it "
-            "into those debates — of families separated, of workers with no safety net, "
-            "of children born into uncertainty."
+            "A viral news video appears on your social media timeline showing a family being separated "
+            "at a border crossing. The comments section beneath the video is a warzone. Some users are "
+            "posting detailed legal arguments, justifying the policy as a necessary deterrent for illegal "
+            "crossings. Others are sharing links to humanitarian funds, expressing profound outrage and "
+            "heartbreak. Buried deep in the middle of the feed, a former refugee shares a quiet, "
+            "ten-word comment about remembering the day they lost their own mother in transit. "
+            "It gets completely ignored under the wave of political arguments."
         ),
         "elicitation_focus": "solidarity, responsibility, fairness, or witnessing suffering",
         "hateval_ids": [4368, 3069, 3324, 1245, 872],
@@ -161,14 +171,13 @@ SCENARIOS = [
         "id": "C",
         "theme": "Culture, Religion & the Politics of Belonging",
         "vignette": (
-            "When people from different cultural or religious backgrounds share the same public space, "
-            "questions arise about whose customs, whose language, and whose identity gets centred — "
-            "and whose gets treated as foreign or suspect. "
-            "These debates often overlap with questions about free speech: what can be said, "
-            "what counts as criticism versus hostility, and who gets to decide. "
-            "For some, these are questions of integration and national cohesion. "
-            "For others, they are questions of dignity — of feeling welcome, seen, or safe "
-            "in the place they call home."
+            "A popular local bakery posts a photo celebrating a religious holiday that is not widely "
+            "observed by the majority of the town. Within hours, a prominent local figure screenshots "
+            "the post, claiming the bakery is 'erasing our traditional culture' and promoting dangerous "
+            "ideologies. Followers flood the bakery’s page with hostile reviews and calls for a boycott. "
+            "In response, a coalition of neighborhood residents organizes a 'buy-out' day, lining up "
+            "around the block to purchase pastries, hoping to drown out the hostility with a highly "
+            "visible show of support and solidarity."
         ),
         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
         "hateval_ids": [926, 493, 4287, 3824, 1872],
@@ -178,6 +187,68 @@ SCENARIOS = [
         ),
     },
 ]
+
+# SCENARIOS = [
+#     {
+#         "id": "A",
+#         "theme": "Borders, Safety & Who Belongs",
+#         "vignette": (
+#             "In many countries, debates about immigration have become inseparable from debates "
+#             "about national identity — who counts as a 'real' citizen, whether borders should be "
+#             "fortified or opened, and how to talk about crime and safety without stoking fear. "
+#             "These conversations happen in parliaments, on social media, and at kitchen tables. "
+#             "For some people, they are abstract political questions. "
+#             "For others, they touch directly on their own sense of place, safety, and belonging — "
+#             "or on the experiences of people they love."
+#         ),
+#         "elicitation_focus": "personal safety, national identity, belonging, or community ties",
+#         "hateval_ids": [4375, 4088, 1185, 3104, 4149],
+#         "opening_q": (
+#             "Reading through that passage — what stands out to you first? "
+#             "Is there something you connect with on a personal level?"
+#         ),
+#     },
+#     {
+#         "id": "B",
+#         "theme": "Crisis, Suffering & Who We Choose to See",
+#         "vignette": (
+#             "Every year, thousands of people make dangerous journeys across borders — "
+#             "fleeing war, persecution, or poverty. Their stories reach the public through "
+#             "news headlines, policy debates, and social media. Some people respond with calls "
+#             "for solidarity and systemic change. Others argue for stricter controls or question "
+#             "the scale of responsibility a country can or should take on. "
+#             "In between, there are millions of individual human stories that rarely make it "
+#             "into those debates — of families separated, of workers with no safety net, "
+#             "of children born into uncertainty."
+#         ),
+#         "elicitation_focus": "solidarity, responsibility, fairness, or witnessing suffering",
+#         "hateval_ids": [4368, 3069, 3324, 1245, 872],
+#         "opening_q": (
+#             "Reading through that passage — what resonates with you? "
+#             "Is there a word, an image, or a feeling that surfaces before anything else?"
+#         ),
+#     },
+#     {
+#         "id": "C",
+#         "theme": "Culture, Religion & the Politics of Belonging",
+#         "vignette": (
+#             "When people from different cultural or religious backgrounds share the same public space, "
+#             "questions arise about whose customs, whose language, and whose identity gets centred — "
+#             "and whose gets treated as foreign or suspect. "
+#             "These debates often overlap with questions about free speech: what can be said, "
+#             "what counts as criticism versus hostility, and who gets to decide. "
+#             "For some, these are questions of integration and national cohesion. "
+#             "For others, they are questions of dignity — of feeling welcome, seen, or safe "
+#             "in the place they call home."
+#         ),
+#         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
+#         "hateval_ids": [926, 493, 4287, 3824, 1872],
+#         "opening_q": (
+#             "Reading through that passage — what feels most alive to you in it? "
+#             "Is there something that resonates personally, or something that feels distant or foreign?"
+#         ),
+#     },
+# ]
 
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -228,22 +299,40 @@ def get_datapoints(sid: str) -> list:
 def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
         return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
-    fmt = f"[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n"
-    for m in messages:
-        fmt += f"{m['content']} [/INST] " if m["role"] == "user" else f"{m['content']} [INST] "
-    fmt = fmt.rstrip(" [INST] ")
+    
+    # Build the message list natively for the client
+    formatted_messages = [{"role": "system", "content": system_prompt}] + messages
+    
     try:
-        r = requests.post(
-            HF_API_URL,
-            headers={"Authorization": f"Bearer {HF_TOKEN}"},
-            json={"inputs": fmt, "parameters": {"max_new_tokens": max_tokens, "temperature": 0.7, "return_full_text": False}},
-            timeout=50,
+        # The client automatically handles the correct endpoint routing!
+        response = client.chat_completion(
+            model="Qwen/Qwen2.5-7B-Instruct", 
+            messages=formatted_messages,
+            max_tokens=max_tokens,
+            temperature=0.7
         )
-        r.raise_for_status()
-        res = r.json()
-        return res[0].get("generated_text", "").strip() if isinstance(res, list) else str(res)
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
+# def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
+#     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
+#         return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
+#     fmt = f"[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n"
+#     for m in messages:
+#         fmt += f"{m['content']} [/INST] " if m["role"] == "user" else f"{m['content']} [INST] "
+#     fmt = fmt.rstrip(" [INST] ")
+#     try:
+#         r = requests.post(
+#             HF_API_URL,
+#             headers={"Authorization": f"Bearer {HF_TOKEN}"},
+#             json={"inputs": fmt, "parameters": {"max_new_tokens": max_tokens, "temperature": 0.7, "return_full_text": False}},
+#             timeout=50,
+#         )
+#         r.raise_for_status()
+#         res = r.json()
+#         return res[0].get("generated_text", "").strip() if isinstance(res, list) else str(res)
+#     except Exception as e:
+#         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
 # ─── Elicitation prompt builder ───────────────────────────────────────────────
 # Implements Willig (2013) turn structure + Rocchio (2022) domain-anchoring
