@@ -301,9 +301,9 @@ def inject_styles():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-    html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; background: #F7F5F0; color: #1A1A1A; }
+    html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; background: #000000; color: #1A1A1A; }
     h1, h2 { font-family: 'Lora', serif; font-weight: 400; letter-spacing: -0.01em; }
-    .stApp { background: #F7F5F0; }
+    .stApp { background: #000000; }
     .vignette-card {
         background: #EEEAE0; border-left: 4px solid #8B6F47;
         padding: 1.2rem 1.5rem; border-radius: 3px; margin: 1rem 0 1.4rem 0;
@@ -323,7 +323,21 @@ def inject_styles():
     .step-label { font-size: 0.71rem; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
     div[data-testid="stChatMessage"] { background: transparent !important; }
     </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('paste', function(e) {
+        e.preventDefault();
+        alert("Please respond in your own words — we’re interested in your reasoning, not correctness.");
+        });
+    });
+    </script>
+    <script>
+    document.addEventListener('copy', function(e) {
+        e.preventDefault();
+        });
+    </script>
     """, unsafe_allow_html=True)
+    
 
 
 def prog(step, total):
@@ -344,10 +358,10 @@ def main():
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about **20–25 minutes**. You'll first share a bit about your own "
+            "This study takes about **15–20 minutes**. You'll first share a bit about your own "
             "perspective on immigration and belonging, then annotate a small set of social media posts."
         )
-        name = st.text_input("Enter your first name or a pseudonym — or the same name as before to continue:")
+        name = st.text_input("Enter your first name or a pseudonym — or the same name as before (if you have done this pilot study before) to continue:")
         if st.button("Begin →", type="primary") and name.strip():
             st.session_state.participant_name = name.strip()
             st.session_state.pdata = load_participant(name.strip())
@@ -388,7 +402,7 @@ def main():
         )
         duration = st.text_input("How long has this been part of your life or work? (e.g., 'my whole life', '3 years')")
         disclosure = st.text_area(
-            "Optional — briefly describe how this topic relates to your life. "
+            "Briefly describe how this topic relates to your life. "
             "This stays confidential and helps us contextualise your responses.",
             height=100, placeholder="e.g. My parents immigrated to Canada in the 1990s...",
         )
@@ -404,7 +418,7 @@ def main():
         st.title("Your perspective")
         prog(2, 4)
         st.markdown(f"<div class='vignette-card'>{scenario['vignette']}</div>", unsafe_allow_html=True)
-        st.caption("Read the passage above, then respond below. Aim for 3–5 sentences per reply.")
+        st.caption("Read the passage above, then respond below. Aim for 2-3 sentences per reply.")
 
         for msg in data["elicitation"]:
             with st.chat_message(msg["role"]):
