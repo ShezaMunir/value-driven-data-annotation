@@ -417,7 +417,6 @@ def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> s
 # ─── Elicitation prompt builder ───────────────────────────────────────────────
 
 def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-    # Grounded in the LEAF framework (Gautam et al. 2025) and visual axes.
     axes_context = (
         "1. Sense of Self (introspective reflection, personal identity, memory)\n"
         "2. Social & Cultural (community ties, cultural background, moral alignment)\n"
@@ -425,46 +424,49 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str
     )
 
     p = (
-        "You are an empathetic research interviewer collecting 'micro-narratives' of lived experience. "
-        "Your goal is to guide the participant to reflect on the scenario through specific dimensions of their own life. "
-        "Strict rules: 1-2 sentences maximum; never summarize their previous point; use a conversational, human tone; "
-        "never ask multiple questions at once.\n\n"
-        f"Lived Experience Axes to explore:\n{axes_context}\n\n"
+        "You are an empathetic qualitative research interviewer. "
+        "The participant just read the following scenario:\n"
+        f"SCENARIO: \"{scenario['vignette']}\"\n\n"
+        "Your goal is to guide them to reflect on this scenario through specific dimensions of their own lived experience.\n"
+        f"LIVED EXPERIENCE AXES:\n{axes_context}\n\n"
+        "RULES:\n"
+        "- 1 to 2 sentences maximum.\n"
+        "- Never summarize what they just said.\n"
+        "- Never ask more than one question at a time.\n\n"
     )
 
+    # Turn-specific instructions
     if user_turns == 1:
         p += (
-            "For this first follow-up: Identify the core emotion or reaction they just shared. "
-            "Ask a single, focused question connecting that reaction to one of the Lived Experience Axes "
-            "(Sense of Self, Social/Cultural, or Wellbeing). For example, if they mention feeling angry, "
-            "ask how that ties into their own community or cultural background."
+            "CURRENT STAGE: TURN 1 (Initial Reaction).\n"
+            "INSTRUCTION: Identify the core emotion they shared. Ask a single question connecting that reaction "
+            "to ONE of the Lived Experience Axes (e.g., how it ties into their community, or their sense of safety)."
         )
     elif user_turns == 2:
         p += (
-            "For this second follow-up: Gently pivot to a *different* axis from the list that they haven't explored yet. "
-            "For example, if they just talked about their community (Social/Cultural), ask how witnessing these kinds "
-            "of events impacts their personal wellbeing or sense of self."
+            "CURRENT STAGE: TURN 2 (Pivot).\n"
+            "INSTRUCTION: Gently pivot to a DIFFERENT axis from the list that they haven't explored yet. "
         )
     elif user_turns >= 3:
         p += (
-            f"For this deepening follow-up: Reference a specific detail they just mentioned — \"{last_user[:100]}...\" — "
-            "and ask them to elaborate on what makes that specific detail so personally significant to them. "
-            "Push for a specific memory or concrete example if possible to break them out of abstract political thinking."
+            "CURRENT STAGE: TURN 3+ (Deepening).\n"
+            f"INSTRUCTION: Reference this specific detail they just mentioned: \"{last_user[:80]}...\" "
+            "Ask them to provide a specific memory or concrete example from their own life that explains WHY they feel that way."
         )
 
+    # Stopping logic
     if user_turns == 4 or user_turns == 5:
         p += (
-            "\n\nIf the participant has provided enough personal detail across these axes to form a coherent 4–5 sentence narrative, "
-            "end your message with the exact phrase: READY_TO_BUILD. If there isn't enough info, frame a question using their earlier responses to get more lived experience info."
+            "\n\nSTOPPING CONDITION: If the participant has provided enough personal detail to form a coherent "
+            "4-5 sentence story, you MUST end your response with the exact text: READY_TO_BUILD"
         )
     elif user_turns >= 6:
         p += (
-            "\n\nCRITICAL INSTRUCTION: This is the absolute final turn. You must warmly thank the participant "
-            "for sharing in 1 short sentence, and you MUST end your message with the exact phrase: READY_TO_BUILD"
+            "\n\nCRITICAL OVERRIDE: This is the absolute final turn (Turn 6). You are strictly forbidden from asking "
+            "another question. You must warmly thank the participant in 1 sentence, and append the exact text: READY_TO_BUILD"
         )
 
     return p
-
 
 SYNTHESIS_SYS = (
     "Write a single first-person micronarrative (4–5 sentences, ~80–100 words) based on the participant's responses. "
@@ -648,7 +650,7 @@ def main():
             data["elicitation"].append({"role": "assistant", "content": scenario["opening_q"]})
             # save_participant(data)
             st.rerun()
-
+        st.caption(f"*(Debug: AI is currently on Turn {user_turns})*")
         if user_input := st.chat_input("Your response…"):
             data["elicitation"].append({"role": "user", "content": user_input})
             # save_participant(data)
