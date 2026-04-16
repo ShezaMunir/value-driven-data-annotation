@@ -472,19 +472,6 @@ def inject_styles():
     .step-label { font-size: 0.71rem; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
     div[data-testid="stChatMessage"] { background: transparent !important; }
     </style>
-    # <script>
-    # document.addEventListener('DOMContentLoaded', function() {
-    # document.addEventListener('paste', function(e) {
-    #     e.preventDefault();
-    #     alert("Please respond in your own words — we’re interested in your reasoning, not correctness.");
-    #     });
-    # });
-    # </script>
-    # <script>
-    # document.addEventListener('copy', function(e) {
-    #     e.preventDefault();
-    #     });
-    # </script>
     """, unsafe_allow_html=True)
     
 
@@ -567,7 +554,7 @@ def main():
         st.caption(labels.get(stage, stage))
         st.markdown("---")
         st.caption("Data is temporarily held in memory and saved securely at the end.")
-        
+
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
     if stage == "disclosure":
         st.markdown("<div class='step-label'>Step 1 of 4</div>", unsafe_allow_html=True)
@@ -591,7 +578,7 @@ def main():
         if st.button("Continue →", type="primary"):
             data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
             data["workflow_stage"] = "elicitation_chat"
-            save_participant(data)
+            # save_participant(data)
             st.rerun()
 
     # ── STAGE 2: ELICITATION ──────────────────────────────────────────────────
@@ -608,12 +595,12 @@ def main():
 
         if not data["elicitation"]:
             data["elicitation"].append({"role": "assistant", "content": scenario["opening_q"]})
-            save_participant(data)
+            # save_participant(data)
             st.rerun()
 
         if user_input := st.chat_input("Your response…"):
             data["elicitation"].append({"role": "user", "content": user_input})
-            save_participant(data)
+            # save_participant(data)
             user_turns = sum(1 for m in data["elicitation"] if m["role"] == "user")
             sys_p = elicitation_sys(scenario, user_turns, user_input)
             response = call_mistral(sys_p, data["elicitation"], max_tokens=160)
@@ -624,7 +611,7 @@ def main():
                 data["workflow_stage"] = "synthesis"
             else:
                 data["elicitation"].append({"role": "assistant", "content": response})
-            save_participant(data)
+            # save_participant(data)
             st.rerun()
 
     # ── STAGE 3: SYNTHESIS ────────────────────────────────────────────────────
@@ -638,20 +625,20 @@ def main():
             with st.spinner("Drafting your narrative…"):
                 fragments = "\n".join(m["content"] for m in data["elicitation"] if m["role"] == "user")
                 data["micronarrative"] = call_mistral(SYNTHESIS_SYS, [{"role": "user", "content": fragments}], max_tokens=200)
-                save_participant(data)
+                # save_participant(data)
 
         edited = st.text_area("Your narrative (edit freely):", value=data["micronarrative"], height=190)
         c1, c2 = st.columns([1, 2])
         with c1:
             if st.button("↺ Regenerate"):
                 data["micronarrative"] = ""
-                save_participant(data)
+                # save_participant(data)
                 st.rerun()
         with c2:
             if st.button("Accept & start annotations →", type="primary"):
                 data["micronarrative"] = edited
                 data["workflow_stage"] = "annotation"
-                save_participant(data)
+                # save_participant(data)
                 st.rerun()
 
     # ── STAGE 4: ANNOTATION ───────────────────────────────────────────────────
@@ -717,12 +704,42 @@ def main():
                             "rationale": rationale, "positionality_salience": salience,
                             "timestamp": datetime.utcnow().isoformat(),
                         })
-                        save_participant(data)
+                        # save_participant(data)
                         st.rerun()
+        # else:
+        #     data["workflow_stage"] = "complete"
+        #     # save_participant(data)
+        #     st.rerun()
         else:
-            data["workflow_stage"] = "complete"
-            save_participant(data)
-            st.rerun()
+            # --- ONE-TIME GOOGLE SHEETS SAVE ---
+            with st.spinner("Saving your responses securely..."):
+                try:
+                    conn = st.connection("gsheets", type=GSheetsConnection)
+                    
+                    new_row = {
+                        "Name": data["name"],
+                        "Timestamp": datetime.now().isoformat(),
+                        "Scenario": data["scenario_id"],
+                        "Connection_Type": data["disclosure"].get("connection_type", ""),
+                        "Duration": data["disclosure"].get("duration", ""),
+                        "Disclosure_Text": data["disclosure"].get("text", ""),
+                        "Micronarrative": data["micronarrative"],
+                        "Chat_Log": json.dumps(data["elicitation"]),
+                        "Annotations": json.dumps(data["annotations"])
+                    }
+                    
+                    # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
+                    SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
+                    
+                    existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
+                    updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+                    
+                    conn.update(spreadsheet=SHEET_URL, data=updated_data)
+                    
+                    data["workflow_stage"] = "complete"
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to save to database. Please leave this window open and contact the researcher. Error: {e}")
 
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     elif stage == "complete":
