@@ -782,7 +782,8 @@ def main():
                     # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
                     SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
                     
-                    existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
+                    # existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
+                    existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
                     updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
                     
                     conn.update(spreadsheet=SHEET_URL, data=updated_data)
