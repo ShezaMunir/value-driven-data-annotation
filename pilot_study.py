@@ -368,11 +368,17 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str
             f'"{last_user[:140]}" — and ask what makes that personally significant. '
             "Not just what happened, but why it matters or what it meant to them."
         )
-    if user_turns >= 4:
+    if user_turns == 4 or user_turns == 5:
         p += (
             "\n\nIf the participant has touched on at least one lived-experience axis with "
             "personal detail (enough for a 4–5 sentence narrative), end your message with: READY_TO_BUILD"
         )
+    elif user_turns >= 6:
+        p += (
+            "\n\nCRITICAL INSTRUCTION: This is the absolute final turn. You must warmly thank the participant "
+            "for sharing in 1 short sentence, and you MUST end your message with the exact phrase: READY_TO_BUILD"
+        )
+
     return p
 
 
