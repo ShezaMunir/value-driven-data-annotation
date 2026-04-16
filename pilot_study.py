@@ -450,7 +450,7 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str
     elif user_turns >= 3:
         p += (
             "CURRENT STAGE: TURN 3+ (Deepening).\n"
-            f"INSTRUCTION: Reference this specific detail they just mentioned: \"{last_user[:80]}...\" "
+            f"INSTRUCTION: Reference a specific detail they mentioned earlier \"{last_user}...\" "
             "Ask them to provide a specific memory or concrete example from their own life that explains WHY they feel that way."
         )
 
@@ -650,11 +650,12 @@ def main():
             data["elicitation"].append({"role": "assistant", "content": scenario["opening_q"]})
             # save_participant(data)
             st.rerun()
-        st.caption(f"*(Debug: AI is currently on Turn {user_turns})*")
+        
         if user_input := st.chat_input("Your response…"):
             data["elicitation"].append({"role": "user", "content": user_input})
             # save_participant(data)
             user_turns = sum(1 for m in data["elicitation"] if m["role"] == "user")
+            st.caption(f"*(Debug: AI is currently on Turn {user_turns})*")
             sys_p = elicitation_sys(scenario, user_turns, user_input)
             response = call_mistral(sys_p, data["elicitation"], max_tokens=160)
             if "READY_TO_BUILD" in response:
