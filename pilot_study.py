@@ -371,40 +371,91 @@ def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> s
 # Implements Willig (2013) turn structure + Rocchio (2022) domain-anchoring
 # + Smythe (2008) hermeneutic circle from turn 3 onward.
 
+# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
+#     focus = scenario["elicitation_focus"]
+#     p = (
+#         "You are a research interviewer. Your only job is to ask ONE good follow-up question "
+#         "that helps the participant explore their lived experience — not their political opinions. "
+#         "Strict rules: 2–3 sentences maximum; do not summarize what they said; do not ask multiple questions; "
+#         "do not use vague prompts like 'tell me more' or 'can you elaborate'; "
+#         f"anchor your question to one specific axis from: {focus}. "
+#         "A good question names something concrete the person just said and asks what made it personally significant."
+#     )
+#     if user_turns == 1:
+#         # Turn 1: Harm/target cue (Willig 2013)
+#         p += (
+#             " This turn specifically: ask who, if anyone, they see as most affected by the tensions "
+#             "described in the scenario — and whether that connects to anyone in their own life."
+#         )
+#     elif user_turns == 2:
+#         # Turn 2: Domain-driver (Rocchio 2022) — give axes explicitly so they can pick
+#         p += (
+#             f" This turn specifically: offer them the axes explicitly — {focus} — and ask which one "
+#             "feels most personally alive right now, and why. Giving them the options helps people "
+#             "surface values they wouldn't otherwise name."
+#         )
+#     elif user_turns >= 3:
+#         # Turn 3+: Hermeneutic circle — reference prior answer (Smythe 2008)
+#         p += (
+#             f' This turn specifically: reference something from what they just said — '
+#             f'"{last_user[:140]}" — and ask what makes that personally significant. '
+#             "Not just what happened, but why it matters or what it meant to them."
+#         )
+#     if user_turns == 4 or user_turns == 5:
+#         p += (
+#             "\n\nIf the participant has touched on at least one lived-experience axis with "
+#             "personal detail (enough for a 4–5 sentence narrative), end your message with: READY_TO_BUILD"
+#         )
+#     elif user_turns >= 6:
+#         p += (
+#             "\n\nCRITICAL INSTRUCTION: This is the absolute final turn. You must warmly thank the participant "
+#             "for sharing in 1 short sentence, and you MUST end your message with the exact phrase: READY_TO_BUILD"
+#         )
+
+    # return p
+
+# ─── Elicitation prompt builder ───────────────────────────────────────────────
+
 def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-    focus = scenario["elicitation_focus"]
-    p = (
-        "You are a research interviewer. Your only job is to ask ONE good follow-up question "
-        "that helps the participant explore their lived experience — not their political opinions. "
-        "Strict rules: 2–3 sentences maximum; do not summarize what they said; do not ask multiple questions; "
-        "do not use vague prompts like 'tell me more' or 'can you elaborate'; "
-        f"anchor your question to one specific axis from: {focus}. "
-        "A good question names something concrete the person just said and asks what made it personally significant."
+    # Grounded in the LEAF framework (Gautam et al. 2025) and visual axes.
+    axes_context = (
+        "1. Sense of Self (introspective reflection, personal identity, memory)\n"
+        "2. Social & Cultural (community ties, cultural background, moral alignment)\n"
+        "3. Wellbeing (emotional impact, mental health, feelings of safety)"
     )
+
+    p = (
+        "You are an empathetic research interviewer collecting 'micro-narratives' of lived experience. "
+        "Your goal is to guide the participant to reflect on the scenario through specific dimensions of their own life. "
+        "Strict rules: 1-2 sentences maximum; never summarize their previous point; use a conversational, human tone; "
+        "never ask multiple questions at once.\n\n"
+        f"Lived Experience Axes to explore:\n{axes_context}\n\n"
+    )
+
     if user_turns == 1:
-        # Turn 1: Harm/target cue (Willig 2013)
         p += (
-            " This turn specifically: ask who, if anyone, they see as most affected by the tensions "
-            "described in the scenario — and whether that connects to anyone in their own life."
+            "For this first follow-up: Identify the core emotion or reaction they just shared. "
+            "Ask a single, focused question connecting that reaction to one of the Lived Experience Axes "
+            "(Sense of Self, Social/Cultural, or Wellbeing). For example, if they mention feeling angry, "
+            "ask how that ties into their own community or cultural background."
         )
     elif user_turns == 2:
-        # Turn 2: Domain-driver (Rocchio 2022) — give axes explicitly so they can pick
         p += (
-            f" This turn specifically: offer them the axes explicitly — {focus} — and ask which one "
-            "feels most personally alive right now, and why. Giving them the options helps people "
-            "surface values they wouldn't otherwise name."
+            "For this second follow-up: Gently pivot to a *different* axis from the list that they haven't explored yet. "
+            "For example, if they just talked about their community (Social/Cultural), ask how witnessing these kinds "
+            "of events impacts their personal wellbeing or sense of self."
         )
     elif user_turns >= 3:
-        # Turn 3+: Hermeneutic circle — reference prior answer (Smythe 2008)
         p += (
-            f' This turn specifically: reference something from what they just said — '
-            f'"{last_user[:140]}" — and ask what makes that personally significant. '
-            "Not just what happened, but why it matters or what it meant to them."
+            f"For this deepening follow-up: Reference a specific detail they just mentioned — \"{last_user[:100]}...\" — "
+            "and ask them to elaborate on what makes that specific detail so personally significant to them. "
+            "Push for a specific memory or concrete example if possible to break them out of abstract political thinking."
         )
+
     if user_turns == 4 or user_turns == 5:
         p += (
-            "\n\nIf the participant has touched on at least one lived-experience axis with "
-            "personal detail (enough for a 4–5 sentence narrative), end your message with: READY_TO_BUILD"
+            "\n\nIf the participant has provided enough personal detail across these axes to form a coherent 4–5 sentence narrative, "
+            "end your message with the exact phrase: READY_TO_BUILD. If there isn't enough info, frame a question using their earlier responses to get more lived experience info."
         )
     elif user_turns >= 6:
         p += (
