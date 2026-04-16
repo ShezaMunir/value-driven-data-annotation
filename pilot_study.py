@@ -404,15 +404,36 @@ def inject_styles():
         padding: 1.2rem 1.5rem; border-radius: 3px; margin: 1rem 0 1.4rem 0;
         font-size: 0.96rem; line-height: 1.85; color: #2A2A2A; font-style: italic;
     }
-    .tweet-card {
-        background: #fff; border: 1px solid #E0DBD0; border-radius: 8px;
-        padding: 1.1rem 1.3rem; font-size: 1rem; line-height: 1.65;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 1.2rem;
-    }
-    .meta-pill {
-        display: inline-block; background: #E8E4DC; border-radius: 12px;
-        font-size: 0.7rem; padding: 2px 9px; color: #777; margin-right: 5px;
-    }
+                .tweet-card {
+    background: #111111;              /* dark card instead of white */
+    border: 1px solid #2A2A2A;        /* subtle border */
+    border-radius: 10px;              /* slightly softer */
+    padding: 1.2rem 1.4rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #EAEAEA;                  /* readable text */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6);  /* deeper shadow for depth */
+    margin-bottom: 1.2rem;
+}
+
+.meta-pill {
+    display: inline-block;
+    background: #222;                /* darker pill */
+    border-radius: 12px;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    color: #B5B5B5;                  /* softer gray text */
+    margin-right: 6px;
+}
+    # .tweet-card {
+    #     background: #fff; border: 1px solid #E0DBD0; border-radius: 8px;
+    #     padding: 1.1rem 1.3rem; font-size: 1rem; line-height: 1.65;
+    #     box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 1.2rem;
+    # }
+    # .meta-pill {
+    #     display: inline-block; background: #E8E4DC; border-radius: 12px;
+    #     font-size: 0.7rem; padding: 2px 9px; color: #777; margin-right: 5px;
+    # }
     .prog-bg { background: #DDD9D0; border-radius: 20px; height: 5px; margin: 0.4rem 0 1.4rem 0; }
     .prog-fill { background: #8B6F47; height: 5px; border-radius: 20px; }
     .step-label { font-size: 0.71rem; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
