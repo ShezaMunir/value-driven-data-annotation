@@ -482,15 +482,21 @@ def inject_styles():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-    html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; background: #000000; color: #1A1A1A; }
+    html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; background: #000000 !important; color: #F0F0F0 !important; }
     h1, h2 { font-family: 'Lora', serif; font-weight: 400; letter-spacing: -0.01em; }
     .stApp { background: #000000; }
+    .stTextInput input, .stTextArea textarea, [data-testid="stChatInput"] {
+        background-color: #222222 !important; 
+        border: 1px solid #444444 !important; 
+        color: #F0F0F0 !important; 
+        border-radius: 8px !important;
+    }
     .vignette-card {
         background: #EEEAE0; border-left: 4px solid #8B6F47;
         padding: 1.2rem 1.5rem; border-radius: 3px; margin: 1rem 0 1.4rem 0;
         font-size: 0.96rem; line-height: 1.85; color: #2A2A2A; font-style: italic;
     }
-                .tweet-card {
+    .tweet-card {
     background: #111111;              /* dark card instead of white */
     border: 1px solid #2A2A2A;        /* subtle border */
     border-radius: 10px;              /* slightly softer */
