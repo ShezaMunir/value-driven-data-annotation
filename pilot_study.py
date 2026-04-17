@@ -469,7 +469,7 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str
     return p
 
 SYNTHESIS_SYS = (
-    "Write a single first-person micronarrative (4–5 sentences, ~80–100 words) based on the participant's responses. "
+    "Write a first-person narrative based on the participant's responses. "
     "Rules: use 'I' throughout; preserve the participant's own specific words and framing; "
     "do NOT add feelings or interpretations they didn't express; "
     "friendly, natural tone — not clinical or academic; "
