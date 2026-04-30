@@ -64,6 +64,7 @@ import random
 from datetime import datetime
 from huggingface_hub import InferenceClient
 from streamlit_gsheets import GSheetsConnection
+import time
 import pandas as pd
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -770,37 +771,79 @@ def main():
         #     data["workflow_stage"] = "complete"
         #     # save_participant(data)
         #     st.rerun()
+        # else:
+            # # --- ONE-TIME GOOGLE SHEETS SAVE ---
+            # with st.spinner("Saving your responses securely..."):
+            #     try:
+            #         conn = st.connection("gsheets", type=GSheetsConnection)
+                    
+            #         new_row = {
+            #             "Name": data["name"],
+            #             "Timestamp": datetime.now().isoformat(),
+            #             "Scenario": data["scenario_id"],
+            #             "Connection_Type": data["disclosure"].get("connection_type", ""),
+            #             "Duration": data["disclosure"].get("duration", ""),
+            #             "Disclosure_Text": data["disclosure"].get("text", ""),
+            #             "Micronarrative": data["micronarrative"],
+            #             "Chat_Log": json.dumps(data["elicitation"]),
+            #             "Annotations": json.dumps(data["annotations"])
+            #         }
+                    
+            #         # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
+            #         SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
+                    
+            #         # existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
+            #         existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
+            #         updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+                    
+            #         conn.update(spreadsheet=SHEET_URL, data=updated_data)
+                    
+            #         data["workflow_stage"] = "complete"
+            #         st.rerun()
+            #     except Exception as e:
+            #         st.error(f"Failed to save to database. Please leave this window open and contact the researcher. Error: {e}")
         else:
             # --- ONE-TIME GOOGLE SHEETS SAVE ---
             with st.spinner("Saving your responses securely..."):
-                try:
-                    conn = st.connection("gsheets", type=GSheetsConnection)
-                    
-                    new_row = {
-                        "Name": data["name"],
-                        "Timestamp": datetime.now().isoformat(),
-                        "Scenario": data["scenario_id"],
-                        "Connection_Type": data["disclosure"].get("connection_type", ""),
-                        "Duration": data["disclosure"].get("duration", ""),
-                        "Disclosure_Text": data["disclosure"].get("text", ""),
-                        "Micronarrative": data["micronarrative"],
-                        "Chat_Log": json.dumps(data["elicitation"]),
-                        "Annotations": json.dumps(data["annotations"])
-                    }
-                    
-                    # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
-                    SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
-                    
-                    # existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
-                    existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
-                    updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
-                    
-                    conn.update(spreadsheet=SHEET_URL, data=updated_data)
-                    
-                    data["workflow_stage"] = "complete"
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to save to database. Please leave this window open and contact the researcher. Error: {e}")
+                max_retries = 3
+                
+                for attempt in range(max_retries):
+                    try:
+                        conn = st.connection("gsheets", type=GSheetsConnection)
+                        
+                        new_row = {
+                            "Name": data["name"],
+                            "Timestamp": datetime.now().isoformat(),
+                            "Scenario": data["scenario_id"],
+                            "Connection_Type": data["disclosure"].get("connection_type", ""),
+                            "Duration": data["disclosure"].get("duration", ""),
+                            "Disclosure_Text": data["disclosure"].get("text", ""),
+                            "Micronarrative": data["micronarrative"],
+                            "Chat_Log": json.dumps(data["elicitation"]),
+                            "Annotations": json.dumps(data["annotations"])
+                        }
+                        
+                        # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
+                        SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
+                        
+                        existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
+                        updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+                        
+                        conn.update(spreadsheet=SHEET_URL, data=updated_data)
+                        
+                        # If it gets here without crashing, it was successful!
+                        data["workflow_stage"] = "complete"
+                        st.rerun()
+                        break  # Stop the loop since it worked
+                        
+                    except Exception as e:
+                        # If it fails, check if we have tries left
+                        if attempt < max_retries - 1:
+                            time.sleep(2)  # Wait 2 seconds and let the loop try again
+                        else:
+                            # If it failed all 3 times, show the final error
+                            st.error(f"Failed to save to database after {max_retries} attempts. Please leave this window open and contact the researcher. Error: {e}")
+
 
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     elif stage == "complete":
