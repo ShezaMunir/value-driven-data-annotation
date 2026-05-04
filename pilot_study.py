@@ -412,11 +412,11 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str
             "enough personal detail to support a coherent 4–5 sentence narrative, "
             "end your response with the exact text: READY_TO_BUILD"
         )
-    elif user_turns >= 6:
+    elif user_turns >= 5:
         p += (
-            "\n\nFINAL TURN — CRITICAL OVERRIDE: You must not ask another question. "
-            "Thank the participant in one warm sentence. "
-            "You MUST end your message with the exact text: READY_TO_BUILD"
+            "\n\nFINAL TURN — CRITICAL OVERRIDE: You have reached the absolute end of the interview. "
+            "Do NOT ask any question. Thank the participant warmly in one sentence only. "
+            "You MUST end your entire response with the exact text: READY_TO_BUILD"
         )
 
     return p
@@ -568,22 +568,47 @@ def main():
     )
     inject_styles()
 
-    # ── SIGN-IN ───────────────────────────────────────────────────────────────
+    # ── SIGN-IN + CONSENT ─────────────────────────────────────────────────────
     if "participant_name" not in st.session_state:
         st.markdown("<div class='step-label'>Pilot Study · Version A</div>", unsafe_allow_html=True)
         st.title("Hate Speech & Belonging")
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about **20–25 minutes**. You'll first share a bit about your own "
+            "This study takes about **15–20 minutes**. You'll first share a bit about your own "
             "perspective and experiences, then read and annotate a small set of social media posts. "
             "There are no right or wrong answers."
         )
+
+        # Fix #9: IRB consent block
+        with st.expander("ℹ️ Participant information & consent — please read before starting", expanded=True):
+            st.markdown(
+                """
+**Purpose:** This study investigates how personal background and lived experience shape the way people interpret ambiguous social media content. It is part of ongoing research into positionality-aware data annotation.
+
+**What you'll do:** Answer a few background questions, have a short conversation with an AI interviewer about your experiences, review a brief narrative summary, then annotate 10 social media posts.
+
+**Data collected:** Your responses, annotations, and the AI conversation transcript. No identifying information beyond the name or pseudonym you provide.
+
+**Data use:** Responses will be stored securely and used solely for research purposes. Data may be published in anonymised or aggregated form.
+
+**Voluntary participation:** You may stop at any time. Partial responses will not be used.
+
+**Contact:** For questions, contact the researcher at [your institutional email].
+                """
+            )
+        consent = st.checkbox("I have read the above information and agree to participate.")
+
         name = st.text_input("Enter your first name or a pseudonym:")
-        if st.button("Begin →", type="primary") and name.strip():
-            st.session_state.participant_name = name.strip()
-            st.session_state.pdata = init_participant(name.strip())
-            st.rerun()
+        if st.button("Begin →", type="primary"):
+            if not consent:
+                st.warning("Please read and accept the participant information before continuing.")
+            elif not name.strip():
+                st.warning("Please enter a name or pseudonym.")
+            else:
+                st.session_state.participant_name = name.strip()
+                st.session_state.pdata = init_participant(name.strip())
+                st.rerun()
         return
 
     if "pdata" not in st.session_state:
@@ -631,10 +656,8 @@ def main():
             "How long has this been part of your life or work? (e.g., 'my whole life', '3 years')"
         )
         disclosure = st.text_area(
-            "Briefly describe how this topic relates to your life. "
-            "This stays confidential and helps us contextualise your responses.",
+            "Briefly describe how this topic relates to your life. *(optional)*",
             height=100,
-            placeholder="e.g. My parents immigrated to Canada in the 1990s...",
         )
 
         if st.button("Continue →", type="primary"):
@@ -677,7 +700,9 @@ def main():
         if user_turns < max_turns:
             if user_input := st.chat_input("Your response…"):
                 data["elicitation"].append({"role": "user", "content": user_input})
-                sys_p = elicitation_sys(scenario, user_turns + 1, user_input)
+                # Fix #1: recount AFTER appending so turn number is accurate
+                current_turn = sum(1 for m in data["elicitation"] if m["role"] == "user")
+                sys_p = elicitation_sys(scenario, current_turn, user_input)
                 response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
 
                 if "READY_TO_BUILD" in response:
@@ -714,19 +739,27 @@ def main():
                 fragments = "\n".join(
                     m["content"] for m in data["elicitation"] if m["role"] == "user"
                 )
-                data["micronarrative"] = call_qwen(
+                result = call_qwen(
                     SYNTHESIS_SYS,
                     [{"role": "user", "content": fragments}],
                     max_tokens=400
                 )
+                # Fix #11: don't save error strings as the narrative
+                if result.startswith("["):
+                    st.error("Couldn't reach the AI model. Please try regenerating in a moment.")
+                    st.stop()
+                data["micronarrative"] = result
 
+        # Fix #6: key includes a hash of the narrative content so widget resets when regenerated
+        narrative_key = f"narrative_{hash(data['micronarrative'])}"
         edited = st.text_area(
             "Your narrative (edit freely):",
             value=data["micronarrative"],
-            height=230
+            height=230,
+            key=narrative_key,
         )
         nar_words = len(edited.strip().split()) if edited.strip() else 0
-        render_word_counter(edited, 80)
+        render_word_counter(edited, 100)  # Fix #10: raise floor to 100 to match synthesis prompt
 
         c1, c2 = st.columns([1, 2])
         with c1:
@@ -735,10 +768,10 @@ def main():
                 st.rerun()
         with c2:
             if st.button("Accept & start annotations →", type="primary"):
-                if nar_words < 80:
+                if nar_words < 100:  # Fix #10
                     st.warning(
                         f"Your narrative is {nar_words} words. "
-                        "Please expand it to at least 80 words before continuing."
+                        "Please expand it to at least 100 words before continuing."
                     )
                 else:
                     data["micronarrative"] = edited
@@ -761,11 +794,12 @@ def main():
                 unsafe_allow_html=True
             )
             st.title("Annotating social media posts")
-            prog(idx + 1, len(datapoints))
-            st.write(
-                "You'll now read and annotate ten social media posts. "
-                "There are no right or wrong answers — your interpretation is the data."
-            )
+            prog(idx, len(datapoints))  # Fix #7: starts at 0%, hits 100% when all done
+            if idx == 0:  # Fix #8: only show instructions on first post
+                st.write(
+                    "You'll now read and annotate ten social media posts. "
+                    "There are no right or wrong answers — your interpretation is the data."
+                )
 
             # Q&A + narrative accessible as collapsible above the post
             with st.expander("Your lived experience narrative (tap to view)", expanded=False):
@@ -783,106 +817,65 @@ def main():
                 unsafe_allow_html=True,
             )
 
+            # Q1 — outside form so state persists across re-renders (#4 fix)
+            st.markdown("**1. How would you label this post?**")
+            label = st.radio(
+                "",
+                options=[
+                    "Clearly harmful — targets a group in a way that dehumanises or incites",
+                    "Likely harmful — framing that would harm most readers from the targeted group, even if deniable",
+                    "Ambiguous — could be read as harmful or legitimate depending on who is reading and why",
+                    "Likely not harmful — critical or provocative, but the harm reading requires a stretch",
+                    "Not harmful — policy concern, cultural commentary, or frustration with no hateful subtext",
+                ],
+                index=None,
+                label_visibility="collapsed",
+                key=f"label_{idx}",
+            )
+
+            st.markdown("---")
+
+            # Q2 — outside form
+            st.markdown("**2. Who, if anyone, does this post seem directed at?**")
+            target = st.selectbox(
+                "",
+                options=[
+                    "— select —",
+                    "No one — I don't read this as targeting anyone",
+                    "A specific individual",
+                    "Immigrants, refugees, or a racialised group",
+                    "A religious community",
+                    "A gender or LGBTQ+ community",
+                    "Multiple overlapping groups",
+                    "Unclear",
+                ],
+                index=0,
+                label_visibility="collapsed",
+                key=f"target_{idx}",
+            )
+
+            st.markdown("---")
+
+            # Q3 — outside form: live word counter works here (#4 fix)
+            st.markdown(f"**3. Your rationale** *(minimum {MIN_RATIONALE_WORDS} words)*")
+            st.caption(
+                "What specific language, framing, or context shaped your judgement? "
+                "Did any aspect of your identity, beliefs, values, or lived experience "
+                "affect how you read this post?"
+            )
+            rationale = st.text_area(
+                "",
+                height=170,
+                label_visibility="collapsed",
+                key=f"rationale_{idx}",
+            )
+            rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
+            render_word_counter(rationale, MIN_RATIONALE_WORDS)
+
+            st.markdown("---")
+
+            # Q4 + submit button — only these need a form to batch the submit action
             with st.form(f"anno_{idx}"):
-
-                # # Q1: Label — no default (index=None)
-                # st.markdown("**1. How would you label this post?**")
-                # label = st.radio(
-                #     "",
-                #     options=[
-                #         "Hate speech — dehumanises or incites harm toward a person or group",
-                #         "Borderline — potentially harmful, but depends on context or intent",
-                #         "Not hate speech — critical, blunt, or politically charged but not hateful",
-                #     ],
-                #     index=None,
-                #     label_visibility="collapsed"
-                # )
-                # Q1: Label — 5-point spectrum, no default
-                st.markdown("**1. How would you label this post?**")
-                label = st.radio(
-                    "",
-                    options=[
-                        "Clearly harmful — targets a group in a way that dehumanises or incites",
-                        "Likely harmful — framing that would harm most readers from the targeted group, even if deniable",
-                        "Ambiguous — could be read as harmful or legitimate depending on who is reading and why",
-                        "Likely not harmful — critical or provocative, but the harm reading requires a stretch",
-                        "Not harmful — policy concern, cultural commentary, or frustration with no hateful subtext",
-                    ],
-                    index=None,
-                    label_visibility="collapsed"
-                )
-
-                # st.markdown("---")
-
-                # # Q2: Target — no default
-                # st.markdown("**2. If harm is present, who seems most targeted?**")
-                # target = st.radio(
-                #     "",
-                #     options=[
-                #         "A specific individual",
-                #         "Immigrants, refugees, or a racialised group",
-                #         "A religious community",
-                #         "A gender or LGBTQ+ community",
-                #         "No specific target — it's about a policy or idea",
-                #         "Unclear",
-                #     ],
-                #     index=None,
-                #     label_visibility="collapsed"
-                # )
-
-                st.markdown("---")
-
-                # Q2: Target — selectbox, no default
-                st.markdown("**2. Who, if anyone, does this post seem directed at?**")
-                target = st.selectbox(
-                    "",
-                    options=[
-                        "— select —",
-                        "No one — I don't read this as targeting anyone",
-                        "A specific individual",
-                        "Immigrants, refugees, or a racialised group",
-                        "A religious community",
-                        "A gender or LGBTQ+ community",
-                        "Multiple overlapping groups",
-                        "Unclear",
-                    ],
-                    index=0,
-                    label_visibility="collapsed"
-                )
-
-                st.markdown("---")
-
-                # Q3: Rationale with live word counter
-                st.markdown(
-                    f"**3. Your rationale** *(minimum {MIN_RATIONALE_WORDS} words)*"
-                )
-                st.caption(
-                    "What specific language, framing, or context shaped your judgement? "
-                    "Did any aspect of your identity, beliefs, values, or lived experience "
-                    "affect how you read this post?"
-                )
-                # rationale = st.text_area(
-                #     "",
-                #     height=170,
-                #     label_visibility="collapsed",
-                #     placeholder=(
-                #         "e.g. The phrase '...' stood out to me because... "
-                #         "My background made me read this differently in that... "
-                #         "What makes this feel harmful / ambiguous / acceptable is..."
-                #     )
-                # )
-
-                rationale = st.text_area(
-                    "",
-                    height=170,
-                    label_visibility="collapsed",
-                )
-                rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
-                render_word_counter(rationale, MIN_RATIONALE_WORDS)
-
-                st.markdown("---")
-
-                # Q4: Positionality salience — no default, improved label
                 st.markdown(
                     "**4. How relevant did your identity or personal experience feel "
                     "to how much this post resonated with you?**"
@@ -893,11 +886,17 @@ def main():
                 submitted = st.form_submit_button("Submit & next →", type="primary")
 
                 if submitted:
+                    # Read Q1–Q3 from session state (set outside form above)
+                    label = st.session_state.get(f"label_{idx}")
+                    target = st.session_state.get(f"target_{idx}", "— select —")
+                    rationale = st.session_state.get(f"rationale_{idx}", "")
+                    rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
+
                     errors = []
                     if label is None:
                         errors.append("Please select a label for question 1.")
                     if target == "— select —":
-                        errors.append("Please select a target for question 2.")
+                        errors.append("Please select an option for question 2.")
                     if rationale_words < MIN_RATIONALE_WORDS:
                         errors.append(
                             f"Your rationale is {rationale_words} words — please expand to at least "
@@ -921,10 +920,30 @@ def main():
                             "positionality_salience": salience,
                             "timestamp": datetime.utcnow().isoformat(),
                         })
+                        # Mid-session save after every annotation (#12 fix)
+                        try:
+                            conn = st.connection("gsheets", type=GSheetsConnection)
+                            progress_row = {
+                                "Name": data["name"],
+                                "Timestamp": datetime.now().isoformat(),
+                                "Scenario": data["scenario_id"],
+                                "Connection_Type": data["disclosure"].get("connection_type", ""),
+                                "Duration": data["disclosure"].get("duration", ""),
+                                "Disclosure_Text": data["disclosure"].get("text", ""),
+                                "Micronarrative": data["micronarrative"],
+                                "Chat_Log": json.dumps(data["elicitation"]),
+                                "Annotations": json.dumps(data["annotations"]),
+                                "Status": f"in_progress_{len(data['annotations'])}_of_{len(datapoints)}",
+                            }
+                            existing = conn.read(spreadsheet=SHEET_URL, usecols=list(progress_row.keys()), ttl=0)
+                            updated = pd.concat([existing, pd.DataFrame([progress_row])], ignore_index=True)
+                            conn.update(spreadsheet=SHEET_URL, data=updated)
+                        except Exception:
+                            pass  # Silent — don't interrupt participant flow on mid-save failure
                         st.rerun()
 
         else:
-            # All annotations done — save to Google Sheets
+            # All annotations done — final save to Google Sheets
             with st.spinner("Saving your responses securely…"):
                 max_retries = 3
                 for attempt in range(max_retries):
@@ -939,7 +958,8 @@ def main():
                             "Disclosure_Text": data["disclosure"].get("text", ""),
                             "Micronarrative": data["micronarrative"],
                             "Chat_Log": json.dumps(data["elicitation"]),
-                            "Annotations": json.dumps(data["annotations"])
+                            "Annotations": json.dumps(data["annotations"]),
+                            "Status": "complete",
                         }
                         existing_data = conn.read(
                             spreadsheet=SHEET_URL,
