@@ -249,75 +249,174 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
 # + Smythe (2008) hermeneutic circle from turn 3 onward.
 # Hard 5-turn cap: wind-down at turn 4, mandatory READY_TO_BUILD at turn 5.
 
-AXES_CONTEXT = """\
-Use the following seven lived-experience axes as lenses to guide each question. \
-Do not name the axes explicitly — let your question naturally open up that dimension of experience:
+# AXES_CONTEXT = """\
+# Use the following seven lived-experience axes as lenses to guide each question. \
+# Do not name the axes explicitly — let your question naturally open up that dimension of experience:
 
-1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems, urban/rural
-2. Linguistic Background & Dialect — native language, multilingualism, how they navigate registers
-3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power dynamics
-4. Race & Ethnicity — racial identity, historical marginalization, how they are perceived by others
+# 1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems, urban/rural
+# 2. Linguistic Background & Dialect — native language, multilingualism, how they navigate registers
+# 3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power dynamics
+# 4. Race & Ethnicity — racial identity, historical marginalization, how they are perceived by others
+# 5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
+# 6. Disability & Neurodivergence — physical, cognitive, or sensory experience; what 'normal' excludes
+# 7. Epistemic Proximity — how close or distant they personally are from the people most affected\
+# """
+
+# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
+#     p = (
+#         "You are an empathetic qualitative research interviewer conducting a lived-experience elicitation. "
+#         "The participant just read this scenario:\n"
+#         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
+#         f"{AXES_CONTEXT}\n\n"
+#         "STRICT RULES:\n"
+#         "- Ask exactly ONE question per turn. Never two questions in one response.\n"
+#         "- 1–2 sentences maximum. No preamble, no summaries.\n"
+#         "- Never paraphrase or reflect back what the participant just said.\n"
+#         "- Never use vague prompts like 'tell me more' or 'can you elaborate'.\n"
+#         "- Ground every question in something concrete the participant just said or implied.\n\n"
+#     )
+
+#     if user_turns == 1:
+#         p += (
+#             "TURN 1 — GROUNDING:\n"
+#             "Identify the most emotionally charged or specific thing they said. "
+#             "Ask a single question connecting that reaction to their relationship "
+#             "to the people, place, or tension in the scenario "
+#             "(axes 1, 4, or 7 are usually best here)."
+#         )
+#     elif user_turns == 2:
+#         p += (
+#             "TURN 2 — PIVOT:\n"
+#             "Move to a DIFFERENT axis from the list — one they haven't touched yet. "
+#             "A good pivot opens up a new dimension of their experience: for example, "
+#             "how their language background, class position, or gender shapes how they read this."
+#         )
+#     elif user_turns == 3:
+#         p += (
+#             "TURN 3 — DEEPENING:\n"
+#             "Ask for a concrete personal memory or lived example that explains "
+#             f"WHY they feel the way they described. Reference something specific they said: "
+#             f"\"{last_user[:180]}\". Push past opinion into experience."
+#         )
+#     elif user_turns >= 4:
+#         p += (
+#             "TURN 4 — CLOSING:\n"
+#             "Ask one final question inviting them to reflect on how their identity, background, "
+#             "values, or beliefs — broadly understood — shaped the way they read this scenario. "
+#             "This should feel like a natural, gentle closing of the conversation."
+#         )
+
+#     if user_turns == 4:
+#         p += (
+#             "\n\nSTOPPING CONDITION: If the participant has shared enough personal detail across "
+#             "the conversation to support a coherent 4–5 sentence narrative, "
+#             "end your response with the exact text: READY_TO_BUILD"
+#         )
+#     elif user_turns >= 5:
+#         p += (
+#             "\n\nCRITICAL OVERRIDE — TURN 5 IS THE ABSOLUTE FINAL TURN. "
+#             "You are forbidden from asking another question. "
+#             "Thank the participant warmly in one sentence. "
+#             "You MUST append the exact text: READY_TO_BUILD"
+#         )
+
+#     return p
+
+AXES_CONTEXT = """\
+The seven lived-experience axes below are lenses for your questions. \
+Do not name them or list them to the participant — use them invisibly to guide what you ask about:
+
+1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems
+2. Linguistic Background & Dialect — native language, multilingualism, code-switching
+3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power
+4. Race & Ethnicity — racial identity, marginalization, how others perceive them
 5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
-6. Disability & Neurodivergence — physical, cognitive, or sensory experience; what 'normal' excludes
-7. Epistemic Proximity — how close or distant they personally are from the people most affected\
+6. Disability & Neurodivergence — physical, cognitive, or sensory experience
+7. Epistemic Proximity — how personally close they are to the people most affected\
 """
 
 def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
     p = (
-        "You are an empathetic qualitative research interviewer conducting a lived-experience elicitation. "
+        "You are a warm, curious qualitative research interviewer doing a lived-experience elicitation. "
         "The participant just read this scenario:\n"
         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
         f"{AXES_CONTEXT}\n\n"
-        "STRICT RULES:\n"
-        "- Ask exactly ONE question per turn. Never two questions in one response.\n"
-        "- 1–2 sentences maximum. No preamble, no summaries.\n"
-        "- Never paraphrase or reflect back what the participant just said.\n"
-        "- Never use vague prompts like 'tell me more' or 'can you elaborate'.\n"
-        "- Ground every question in something concrete the participant just said or implied.\n\n"
+        "CORE RULES — follow these every turn:\n"
+        "- Ask exactly ONE question. Never two.\n"
+        "- 1–2 sentences maximum. No preamble, no summaries, no affirmations like 'great' or 'I see'.\n"
+        "- Never paraphrase what they just said back to them.\n"
+        "- If their answer was thin, vague, or a single word, do NOT pivot to a new axis. "
+        "  Stay with what they just raised and ask for a concrete moment or example from their life.\n"
+        "- Only move to a new axis when the participant has given a substantive answer on the current one.\n"
+        "- Ground every question in something specific they actually said — not generic.\n\n"
     )
 
     if user_turns == 1:
         p += (
-            "TURN 1 — GROUNDING:\n"
-            "Identify the most emotionally charged or specific thing they said. "
-            "Ask a single question connecting that reaction to their relationship "
-            "to the people, place, or tension in the scenario "
-            "(axes 1, 4, or 7 are usually best here)."
+            "TURN 1 — OPENING:\n"
+            "Pick the most specific or emotionally loaded thing they said. "
+            "Ask one question that connects it to their personal experience — "
+            "who they are, where they're from, or how close they feel to the situation described. "
+            "Axes 1, 4, and 7 are natural starting points."
         )
     elif user_turns == 2:
-        p += (
-            "TURN 2 — PIVOT:\n"
-            "Move to a DIFFERENT axis from the list — one they haven't touched yet. "
-            "A good pivot opens up a new dimension of their experience: for example, "
-            "how their language background, class position, or gender shapes how they read this."
-        )
+        # Check if last answer was thin — if so, stay and probe deeper
+        last_clean = last_user.strip()
+        word_count_hint = len(last_clean.split())
+        if word_count_hint <= 6:
+            p += (
+                "TURN 2 — REPAIR:\n"
+                f"The participant's last answer was very short: \"{last_clean}\". "
+                "Do not pivot to a new topic. Instead, gently open up what they just said "
+                "by asking for a specific memory, moment, or example behind it. "
+                "Stay on the same axis — just go deeper."
+            )
+        else:
+            p += (
+                "TURN 2 — BROADEN:\n"
+                "They've shared one dimension. Now open up a related but different angle "
+                "— not an abrupt topic switch, but a natural extension. "
+                "For example: if they talked about community, you might ask about "
+                "a time they personally felt inside or outside that community. "
+                "Choose the next axis based on what feels most alive in what they said."
+            )
     elif user_turns == 3:
-        p += (
-            "TURN 3 — DEEPENING:\n"
-            "Ask for a concrete personal memory or lived example that explains "
-            f"WHY they feel the way they described. Reference something specific they said: "
-            f"\"{last_user[:180]}\". Push past opinion into experience."
-        )
+        last_clean = last_user.strip()
+        word_count_hint = len(last_clean.split())
+        if word_count_hint <= 6:
+            p += (
+                "TURN 3 — REPAIR:\n"
+                f"The participant's last answer was very short: \"{last_clean}\". "
+                "Do not move on. Ask them to ground what they said in a specific moment "
+                "or lived example — something that actually happened to them or someone they know."
+            )
+        else:
+            p += (
+                "TURN 3 — DEEPEN:\n"
+                f"They said: \"{last_clean[:200]}\". "
+                "Ask what made that personally significant — not just what happened, "
+                "but why it stayed with them, or what it revealed about how they see themselves "
+                "or their place in situations like the one in the scenario."
+            )
     elif user_turns >= 4:
         p += (
-            "TURN 4 — CLOSING:\n"
-            "Ask one final question inviting them to reflect on how their identity, background, "
-            "values, or beliefs — broadly understood — shaped the way they read this scenario. "
-            "This should feel like a natural, gentle closing of the conversation."
+            "TURN 4 — CLOSE:\n"
+            "Ask one final, open question that invites them to reflect on how their identity, "
+            "values, background, or beliefs — in whatever way feels right to them — "
+            "shaped the way they read this scenario. Keep it gentle and open-ended."
         )
 
     if user_turns == 4:
         p += (
-            "\n\nSTOPPING CONDITION: If the participant has shared enough personal detail across "
-            "the conversation to support a coherent 4–5 sentence narrative, "
+            "\n\nSTOPPING CONDITION: If across the conversation the participant has shared "
+            "enough personal detail to support a coherent 4–5 sentence narrative, "
             "end your response with the exact text: READY_TO_BUILD"
         )
-    elif user_turns >= 5:
+    elif user_turns >= 6:
         p += (
-            "\n\nCRITICAL OVERRIDE — TURN 5 IS THE ABSOLUTE FINAL TURN. "
-            "You are forbidden from asking another question. "
-            "Thank the participant warmly in one sentence. "
-            "You MUST append the exact text: READY_TO_BUILD"
+            "\n\nFINAL TURN — CRITICAL OVERRIDE: You must not ask another question. "
+            "Thank the participant in one warm sentence. "
+            "You MUST end your message with the exact text: READY_TO_BUILD"
         )
 
     return p
@@ -666,8 +765,8 @@ def main():
 
             # Q&A + narrative accessible as collapsible above the post
             with st.expander("Your lived experience narrative (tap to view)", expanded=False):
-                render_chat_replay(data["elicitation"])
-                st.markdown("---")
+                # render_chat_replay(data["elicitation"])
+                # st.markdown("---")
                 st.markdown(f"*{data['micronarrative']}*")
 
             # Instruction BEFORE the passage (improves flow)
@@ -682,34 +781,68 @@ def main():
 
             with st.form(f"anno_{idx}"):
 
-                # Q1: Label — no default (index=None)
+                # # Q1: Label — no default (index=None)
+                # st.markdown("**1. How would you label this post?**")
+                # label = st.radio(
+                #     "",
+                #     options=[
+                #         "Hate speech — dehumanises or incites harm toward a person or group",
+                #         "Borderline — potentially harmful, but depends on context or intent",
+                #         "Not hate speech — critical, blunt, or politically charged but not hateful",
+                #     ],
+                #     index=None,
+                #     label_visibility="collapsed"
+                # )
+                # Q1: Label — 5-point spectrum, no default
                 st.markdown("**1. How would you label this post?**")
                 label = st.radio(
                     "",
                     options=[
-                        "Hate speech — dehumanises or incites harm toward a person or group",
-                        "Borderline — potentially harmful, but depends on context or intent",
-                        "Not hate speech — critical, blunt, or politically charged but not hateful",
+                        "Clearly harmful — targets a group in a way that dehumanises or incites",
+                        "Likely harmful — framing that would harm most readers from the targeted group, even if deniable",
+                        "Ambiguous — could be read as harmful or legitimate depending on who is reading and why",
+                        "Likely not harmful — critical or provocative, but the harm reading requires a stretch",
+                        "Not harmful — policy concern, cultural commentary, or frustration with no hateful subtext",
                     ],
                     index=None,
                     label_visibility="collapsed"
                 )
 
+                # st.markdown("---")
+
+                # # Q2: Target — no default
+                # st.markdown("**2. If harm is present, who seems most targeted?**")
+                # target = st.radio(
+                #     "",
+                #     options=[
+                #         "A specific individual",
+                #         "Immigrants, refugees, or a racialised group",
+                #         "A religious community",
+                #         "A gender or LGBTQ+ community",
+                #         "No specific target — it's about a policy or idea",
+                #         "Unclear",
+                #     ],
+                #     index=None,
+                #     label_visibility="collapsed"
+                # )
+
                 st.markdown("---")
 
-                # Q2: Target — no default
-                st.markdown("**2. If harm is present, who seems most targeted?**")
-                target = st.radio(
+                # Q2: Target — selectbox, no default
+                st.markdown("**2. Who, if anyone, does this post seem directed at?**")
+                target = st.selectbox(
                     "",
                     options=[
+                        "— select —",
+                        "No one — I don't read this as targeting anyone",
                         "A specific individual",
                         "Immigrants, refugees, or a racialised group",
                         "A religious community",
                         "A gender or LGBTQ+ community",
-                        "No specific target — it's about a policy or idea",
+                        "Multiple overlapping groups",
                         "Unclear",
                     ],
-                    index=None,
+                    index=0,
                     label_visibility="collapsed"
                 )
 
@@ -724,15 +857,21 @@ def main():
                     "Did any aspect of your identity, beliefs, values, or lived experience "
                     "affect how you read this post?"
                 )
+                # rationale = st.text_area(
+                #     "",
+                #     height=170,
+                #     label_visibility="collapsed",
+                #     placeholder=(
+                #         "e.g. The phrase '...' stood out to me because... "
+                #         "My background made me read this differently in that... "
+                #         "What makes this feel harmful / ambiguous / acceptable is..."
+                #     )
+                # )
+
                 rationale = st.text_area(
                     "",
                     height=170,
                     label_visibility="collapsed",
-                    placeholder=(
-                        "e.g. The phrase '...' stood out to me because... "
-                        "My background made me read this differently in that... "
-                        "What makes this feel harmful / ambiguous / acceptable is..."
-                    )
                 )
                 rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
                 render_word_counter(rationale, MIN_RATIONALE_WORDS)
@@ -753,7 +892,7 @@ def main():
                     errors = []
                     if label is None:
                         errors.append("Please select a label for question 1.")
-                    if target is None:
+                    if target == "— select —":
                         errors.append("Please select a target for question 2.")
                     if rationale_words < MIN_RATIONALE_WORDS:
                         errors.append(
