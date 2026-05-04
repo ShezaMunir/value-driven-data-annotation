@@ -584,17 +584,21 @@ def main():
         with st.expander("ℹ️ Participant information & consent — please read before starting", expanded=True):
             st.markdown(
                 """
-**Purpose:** This study investigates how personal background and lived experience shape the way people interpret ambiguous social media content. It is part of ongoing research into positionality-aware data annotation.
+**Purpose:** This study investigates whether an annotator's lived experience shapes how they interpret ambiguous social media content — specifically content where reasonable people disagree about whether harm is present. We are building a dataset that captures not just *what* people label, but *why*, and whether that reasoning is grounded in direct personal experience with the topics involved.
 
-**What you'll do:** Answer a few background questions, have a short conversation with an AI interviewer about your experiences, review a brief narrative summary, then annotate 10 social media posts.
+**Background:** Standard annotation pipelines treat disagreement between annotators as noise to be averaged away. This study treats disagreement as a signal — we want to understand whether people who have direct experience with immigration, religious minority status, gender-based discrimination, or related topics read the same posts differently, and more specifically, than those who do not.
 
-**Data collected:** Your responses, annotations, and the AI conversation transcript. No identifying information beyond the name or pseudonym you provide.
+**What you'll do:** Share a bit about your background and connection to these topics, have a short conversation with an AI interviewer about your experiences and perspective, review and edit a brief narrative summary of what you shared, then read and annotate 10 social media posts — providing a label, identifying who if anyone is targeted, and writing a rationale for your interpretation.
 
-**Data use:** Responses will be stored securely and used solely for research purposes. Data may be published in anonymised or aggregated form.
+**Content warning:** The posts you will annotate are real-world examples of ambiguous speech around immigration, religion, gender, and identity. They are not explicit — they contain no slurs or direct threats — but some may feel uncomfortable or personally resonant depending on your background. That resonance is part of what we are studying.
 
-**Voluntary participation:** You may stop at any time. Partial responses will not be used.
+**Data collected:** Your background disclosure, the AI conversation transcript, your narrative, and your annotations. No identifying information beyond the name or pseudonym you provide is collected.
 
-**Contact:** For questions, contact the researcher at [your institutional email].
+**Data use:** Responses will be stored securely and used solely for academic research. Data may be published in anonymised or aggregated form as part of a positionality-aware annotation dataset. Your micronarrative and rationales may be quoted anonymously in research publications.
+
+**Voluntary participation:** You may stop at any time without penalty. Incomplete responses will not be used or stored.
+
+**Contact:** For questions about this study, contact the researcher at [your institutional email].
                 """
             )
         consent = st.checkbox("I have read the above information and agree to participate.")
