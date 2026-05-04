@@ -752,6 +752,10 @@ def main():
 
         if idx < len(datapoints):
             dp = datapoints[idx]
+            st.components.v1.html(
+                "<script>window.parent.scrollTo({top: 0, behavior: 'instant'});</script>",
+                height=0,
+            )
             st.markdown(
                 f"<div class='step-label'>Step 4 of 4 — Post {idx+1} of {len(datapoints)}</div>",
                 unsafe_allow_html=True
