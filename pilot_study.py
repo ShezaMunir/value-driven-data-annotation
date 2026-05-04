@@ -1,5 +1,5 @@
 """
-pilot_study.py — HatEval Positionality Pilot Study (Version A: Elicitation → Annotation)
+pilot_study.py — Ambiguous Hate Speech Positionality Pilot Study (Version A: Elicitation → Annotation)
 Researcher: Sheza Munir
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -10,135 +10,140 @@ ORDERING — Elicitation FIRST, annotation SECOND.
   Smythe et al. (2008) "Methodological Considerations for Interpretive Phenomenological
   Inquiry" — narrative/reflective mindset before evaluation tasks enriches rationale depth.
   Annotation-first activates cold "judge mode" that suppresses lived-experience disclosure.
-  Version B (pilot_study_v2.py) counterbalances for ~7 of 15 participants.
 
 ELICITATION DESIGN
-  • Lived-experience axes: Rocchio et al. (2022) "Eliciting Values of Patients with MCC"
-    Domain-driven prompts surface values that free-response alone misses. Each turn is
-    anchored to one of: personal identity, fairness, belonging, relationships.
-  • Vignette construction: Barter & Renold (1999) "Using Vignettes in Educational Research"
-    80–150 words, grounded in HatEval thematic clusters, max 3 vignettes to avoid fatigue.
-    Vignettes elicit lived experience ONLY — no tweets shown during elicitation.
-  • Iterative probing: Willig (2013) "Elicitation Interview Technique"
-    initial reaction → harm/target cue → lived experience axis → revisit & deepen.
-  • Hermeneutic circle: Smythe (2008) after Heidegger — later prompts reference earlier
-    answers to preserve part-whole coherence across turns.
+  • Lived-experience axes (critical computing / NLP / HCI framework):
+      1. Sociocultural & Geographic Context
+      2. Linguistic Background & Dialect
+      3. Socioeconomic Status & Labor Dynamics
+      4. Race & Ethnicity
+      5. Gender Identity & Sexual Orientation
+      6. Disability & Neurodivergence
+      7. Domain Expertise vs. Epistemic Proximity
+  • 5-turn hard cap with graceful wind-down at turn 4.
+  • Vignette construction: Barter & Renold (1999) — 80–150 words, grounded in dataset
+    thematic clusters, max 3 vignettes to avoid fatigue.
+  • Iterative probing: Willig (2013) — initial reaction → harm/target cue → axis deepening.
+  • Hermeneutic circle: Smythe (2008) — later prompts reference earlier answers.
 
 ANNOTATION DESIGN
-  • 15 tweets from HatEval English training split (Basile et al. 2019, SemEval Task 5).
-    Sampled via multi-classifier disagreement + entropy scoring:
-      cardiffnlp/twitter-roberta-base-hate, unitary/toxic-bert,
-      cardiffnlp/twitter-roberta-base-offensive
-    combined_score = 0.5 × norm(variance) + 0.5 × norm(mean binary entropy)
-  • 5 tweets per scenario, thematically grouped:
-      Scenario A — Border security & national identity rhetoric
-      Scenario B — Refugees, humanitarian crisis & family separation
-      Scenario C — Cultural/religious belonging & counter-speech
-  • Positionality salience reframed as reflexivity (Smythe 2008):
-    "How relevant did your own background feel?" — not a bias admission.
-  • Rationale minimum: ~35 words / 3–4 sentences.
+  • 10 posts per scenario from the ambiguous hate speech dataset (Munir 2024).
+    Sampled across 4 domains: Immigration/Nativism, Religion, Gender/Sexuality, Intersectional.
+  • All items satisfy C1–C4 of the ambiguity codebook (surface plausible deniability,
+    experiential divergence, discourse embeddedness, no explicit derogation).
+  • Positionality salience reframed as identity resonance (reflexivity, not bias admission).
+  • Rationale minimum: 50 words.
 
-MICRONARRATIVE: Boyle & Butcher (2024) "Drawn from Life" — fidelity to participant's
-  own words, no reinterpretation, first person, friendly tone.
+MICRONARRATIVE: Boyle & Butcher (2024) — fidelity to participant's own words,
+  no reinterpretation, first person, warm tone, minimum 120 words.
 
-MODEL: mistralai/Mistral-7B-Instruct-v0.3 via HF Inference API (Apache 2.0).
-
-COUNTERBALANCE: Version B runs annotation → elicitation for ~7/15 participants.
-  Comparing rationale depth + label distribution = ACL methodological contribution.
+MODEL: Qwen/Qwen2.5-7B-Instruct via HF Inference API.
 """
-
-# import streamlit as st
-# import json
-# import os
-# import re
-# import requests
-# from datetime import datetime
-# from huggingface_hub import InferenceClient
-# from streamlit_gsheets import GSheetsConnection
-# import pandas as pd
 
 import streamlit as st
 import json
-import re
 import random
 from datetime import datetime
 from huggingface_hub import InferenceClient
 from streamlit_gsheets import GSheetsConnection
 import time
 import pandas as pd
+import os
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-# HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
-# Safely fetch the token
 try:
     HF_TOKEN = st.secrets["HF_TOKEN"]
 except KeyError:
-    # Fallback to local environment variable if secrets aren't set
     HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
 
-# Initialize the Hugging Face client
 client = InferenceClient(api_key=HF_TOKEN)
-# HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
-HF_API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct"
-# STORAGE_DIR = "pilot_data"
 
-# ─── HatEval Datapoints ───────────────────────────────────────────────────────
-# Source: Basile et al. (2019), SemEval-2019 Task 5, English training split.
-# Sampled via multi-classifier disagreement + entropy (see docstring above).
-# HS=hate speech, TR=target individual (1) or group (0), AG=aggressive.
-# URLs stripped; text lightly cleaned for annotation display clarity.
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
 
-HATEVAL_DATAPOINTS = [
-    # ── Scenario A: Border security & national identity rhetoric ──────────────
-    # High classifier disagreement: explicitly nativist language, wall-building.
-    # cardiffnlp_hate_prob > 0.91 on all; dynabench_hate_prob < 0.10 on all.
-    {"id": 4375, "scenario": "A", "hs": 1, "tr": 0, "ag": 1, "combined_score": 0.5457,
-     "text": "Shooter opens fire on Border Patrol agent in San Ysidro — reason why we need this Wall. #buildThatWall"},
-    {"id": 4088, "scenario": "A", "hs": 1, "tr": 0, "ag": 1, "combined_score": 0.5447,
-     "text": "Protecting the COUNTRY is the sole purpose of the Military. Not for unnecessary foreign endeavours. The COUNTRY starts at the Border. #BuildThatWall"},
-    {"id": 1185, "scenario": "A", "hs": 1, "tr": 0, "ag": 0, "combined_score": 0.5437,
-     "text": "Please visit today to honor the thousands of victims killed by illegal aliens! We are building a memorial wall. #BuildThatWall"},
-    {"id": 3104, "scenario": "A", "hs": 1, "tr": 0, "ag": 1, "combined_score": 0.5435,
-     "text": "#BuildThatWall — 100% of your donation goes to secure America's southern border! Together we can save taxpayer money, make our communities safer, and build American Pride!"},
-    {"id": 4149, "scenario": "A", "hs": 1, "tr": 0, "ag": 0, "combined_score": 0.5446,
-     "text": "In the UK, we're full. Nearly 70 million people on a tiny island that's already the most densely populated country in Europe. We don't need more immigration."},
+MIN_RATIONALE_WORDS = 50
 
-    # ── Scenario B: Refugees, humanitarian crisis & family separation ─────────
-    # HS=0 throughout yet cardiffnlp_hate_prob 0.84–0.96 — high false-positive ambiguity.
-    # These posts are factual/advocacy; classifier disagreement is about framing, not content.
-    {"id": 4368, "scenario": "B", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5480,
-     "text": "Did this woman and child drown because the EU-backed Libyan coastguard scuttled their boat after they refused to return to Libya — where intercepted refugees face inhumane detention?"},
-    {"id": 3069, "scenario": "B", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5471,
-     "text": "New Poll: Majority of Republican voters support separating families to deter illegal immigration."},
-    {"id": 3324, "scenario": "B", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5426,
-     "text": "The U.S. has inflicted lasting trauma and pain upon immigrant families forced to live in horrifying uncertainty. It has to end now. #FamiliesBelongTogether #EndFamilySeparation"},
-    {"id": 1245, "scenario": "B", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5430,
-     "text": "Imagine injured migrant workers who have no family to take care of them and can't afford medical scans."},
-    {"id": 872, "scenario": "B", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5426,
-     "text": "Developing countries host 85% of the world's refugees."},
+# ─── Dataset ──────────────────────────────────────────────────────────────────
+# Source: Munir (2024) Ambiguous Hate Speech Dataset.
+# Domain: IMM = Immigration/Nativism, REL = Religion, GEN = Gender/Sexuality, INT = Intersectional.
+# All items satisfy C1–C4 of the ambiguity codebook (surface plausible deniability,
+# experiential divergence, discourse embeddedness, no explicit derogation).
 
-    # ── Scenario C: Cultural/religious belonging & counter-speech ─────────────
-    # Mix of counter-speech (1872), irony (926), Islamophobia framing (493),
-    # policy reporting (4287, 3824). Highest combined_score cluster in the sample.
-    {"id": 926, "scenario": "C", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5507,
-     "text": "Just back from Bilbao where flags say 'Refugees Welcome' — a society that embraces diversity. Returned to RW smears and Tories doing what they want. Grim."},
-    {"id": 493, "scenario": "C", "hs": 1, "tr": 0, "ag": 0, "combined_score": 0.5504,
-     "text": "Why is it OK to make offensive comments about Christianity, but similar comments about Islam are called Islamophobic by the mainstream media? #Burqa #Brexit #immigration"},
-    {"id": 4287, "scenario": "C", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5461,
-     "text": "We are officially no longer a nation of immigrants. U.S. Citizenship and Immigration Services will remove 'nation of immigrants' from their mission statement."},
-    {"id": 3824, "scenario": "C", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5419,
-     "text": "UK rejects Christian refugees recommended by the UN, admits only Muslims among 1,112 Syrians admitted Jan–March 2018."},
-    {"id": 1872, "scenario": "C", "hs": 0, "tr": 0, "ag": 0, "combined_score": 0.5419,
-     "text": "The best tool against anti-immigrant sentiment is no safe space for white supremacists — be they legislators or poor folks. Shame them, smash them."},
+DATAPOINTS = [
+    # ── Scenario A: Borders, Safety & Who Belongs ──────────────────────────────
+    # Theme: nativist plausible-deniability framing, demographic anxiety, rule-of-law rhetoric.
+    # High C2 divergence: in-group (immigrant/minority) vs. out-group readings diverge substantively.
+    {"id": "A01", "scenario": "A", "domain": "IMM",
+     "text": "Our hospitals can't keep up. At some point we have to ask who this country is actually for."},
+    {"id": "A02", "scenario": "A", "domain": "IMM",
+     "text": "My grandparents came here legally and waited years. Why should anyone get to skip that line?"},
+    {"id": "A03", "scenario": "A", "domain": "IMM",
+     "text": "When you flood a labor market, wages go down. Economics doesn't care about feelings."},
+    {"id": "A04", "scenario": "A", "domain": "IMM",
+     "text": "There's nothing wrong with wanting your hometown to stay recognizable."},
+    {"id": "A05", "scenario": "A", "domain": "IMM",
+     "text": "Demographic change at this pace isn't natural. Someone is choosing this."},
+    {"id": "A06", "scenario": "A", "domain": "IMM",
+     "text": "Chain migration turns one visa into fifty. That's not the deal Americans signed up for."},
+    {"id": "A07", "scenario": "A", "domain": "IMM",
+     "text": "Every nation has the right to exist as a distinct people. Even European ones."},
+    {"id": "A08", "scenario": "A", "domain": "IMM",
+     "text": "We keep importing poverty and then wonder why poverty doesn't go away."},
+    {"id": "A09", "scenario": "A", "domain": "IMM",
+     "text": "Western countries are the only ones expected to dissolve their own majorities."},
+    {"id": "A10", "scenario": "A", "domain": "IMM",
+     "text": "The people most affected by immigration policy are the working class, not politicians."},
+
+    # ── Scenario B: Religion, Culture & the Politics of Belonging ──────────────
+    # Theme: religious double-standards, secular liberal framing, epistemic proximity.
+    # High C2 divergence: Muslim/religious minority annotators read threat-coding invisible to others.
+    {"id": "B01", "scenario": "B", "domain": "REL",
+     "text": "I support religious freedom, but some belief systems just aren't compatible with liberal democracy. That's not bigotry, it's observation."},
+    {"id": "B02", "scenario": "B", "domain": "REL",
+     "text": "We accommodate every faith's dietary rules in schools now. At some point you have to ask whose schools these are."},
+    {"id": "B03", "scenario": "B", "domain": "REL",
+     "text": "I have no problem with people praying five times a day. I do have a problem when it starts affecting workplace schedules for everyone else."},
+    {"id": "B04", "scenario": "B", "domain": "REL",
+     "text": "There's a reason the Enlightenment happened in one part of the world and not others. That's not racism, it's history."},
+    {"id": "B05", "scenario": "B", "domain": "REL",
+     "text": "If a Christian baker refusing a gay wedding is front-page news, why isn't a halal butcher refusing to serve a non-Muslim customer?"},
+    {"id": "B06", "scenario": "B", "domain": "REL",
+     "text": "Secularism means no religion gets special status. That includes the ones progressives have decided are beyond criticism."},
+    {"id": "B07", "scenario": "B", "domain": "INT",
+     "text": "Immigrant communities often hold the most conservative views on gender. The left just doesn't want to say that out loud."},
+    {"id": "B08", "scenario": "B", "domain": "INT",
+     "text": "Gay rights were won by fighting religious conservatism. Now we're importing more of it and calling it diversity."},
+    {"id": "B09", "scenario": "B", "domain": "INT",
+     "text": "Female genital mutilation is illegal here. Calling attention to where it's practiced is not Islamophobia."},
+    {"id": "B10", "scenario": "B", "domain": "INT",
+     "text": "The same activists who say believe all women go very quiet when the accused is from a protected group."},
+
+    # ── Scenario C: Gender, Identity & Whose Experience Counts ────────────────
+    # Theme: gender essentialism, weaponized empiricism, concern-trolling, intersectional erasure.
+    # C2 divergence fractured: trans/NB, cisgender feminist, and non-feminist readers diverge.
+    {"id": "C01", "scenario": "C", "domain": "GEN",
+     "text": "I believe women. I also believe due process. These shouldn't be mutually exclusive."},
+    {"id": "C02", "scenario": "C", "domain": "GEN",
+     "text": "Calling everything a 'microaggression' doesn't empower women. It treats them like they can't handle everyday life."},
+    {"id": "C03", "scenario": "C", "domain": "GEN",
+     "text": "There are two genders. I'm sorry if that's hurtful, but being hurtful isn't the same as being wrong."},
+    {"id": "C04", "scenario": "C", "domain": "GEN",
+     "text": "If gender is a social construct, then so is the wage gap. You can't have it both ways."},
+    {"id": "C05", "scenario": "C", "domain": "GEN",
+     "text": "Women's sports existed to give women a fair playing field. That's it. That's the whole point."},
+    {"id": "C06", "scenario": "C", "domain": "GEN",
+     "text": "Men aren't broken women. Treating masculinity as a pathology isn't progressivism, it's prejudice with better vocabulary."},
+    {"id": "C07", "scenario": "C", "domain": "INT",
+     "text": "When a working-class white man loses a job to a diversity hire, he's not allowed to be angry. That anger has to go somewhere."},
+    {"id": "C08", "scenario": "C", "domain": "INT",
+     "text": "Intersectionality is just a hierarchy that puts some victims above others. It's oppression with extra steps."},
+    {"id": "C09", "scenario": "C", "domain": "INT",
+     "text": "First-generation immigrant women are often the most opposed to feminism. Nobody ever asks them why."},
+    {"id": "C10", "scenario": "C", "domain": "INT",
+     "text": "Jewish students are told their discomfort with certain political spaces doesn't count as discrimination. Wonder why."},
 ]
 
 # ─── Scenarios ────────────────────────────────────────────────────────────────
-# Each scenario is a standalone vignette to elicit lived experience.
-# Vignettes are thematically grounded in the HatEval tweet clusters but contain NO tweets.
-# Purpose: activate relevant autobiographical memory before annotation (Smythe 2008).
-# Design: Barter & Renold (1999) — 80–150 words, theory-grounded, max 3, avoid fatigue.
-# Assignment: round-robin by sign-up order → 5 participants per scenario.
 
 SCENARIOS = [
     {
@@ -154,122 +159,58 @@ SCENARIOS = [
             "to silently choose a side, engage, or just keep their heads down."
         ),
         "elicitation_focus": "personal safety, national identity, belonging, or community ties",
-        "hateval_ids": [4375, 4088, 1185, 3104, 4149],
+        "datapoint_ids": ["A01","A02","A03","A04","A05","A06","A07","A08","A09","A10"],
         "opening_q": (
             "Reading through that passage — what stands out to you first? "
-            "Is there something you connect with on a personal level?"
+            "Is there something you connect with on a personal level, or something that feels distant?"
         ),
     },
     {
         "id": "B",
-        "theme": "Crisis, Suffering & Who We Choose to See",
-        "vignette": (
-            "A viral news video appears on your social media timeline showing a family being separated "
-            "at a border crossing. The comments section beneath the video is a warzone. Some users are "
-            "posting detailed legal arguments, justifying the policy as a necessary deterrent for illegal "
-            "crossings. Others are sharing links to humanitarian funds, expressing profound outrage and "
-            "heartbreak. Buried deep in the middle of the feed, a former refugee shares a quiet, "
-            "ten-word comment about remembering the day they lost their own mother in transit. "
-            "It gets completely ignored under the wave of political arguments."
-        ),
-        "elicitation_focus": "solidarity, responsibility, fairness, or witnessing suffering",
-        "hateval_ids": [4368, 3069, 3324, 1245, 872],
-        "opening_q": (
-            "Reading through that passage — what's the first thing that strikes you? "
-            "Is there a word, an image, or a feeling that surfaces before anything else?"
-        ),
-    },
-    {
-        "id": "C",
-        "theme": "Culture, Religion & the Politics of Belonging",
+        "theme": "Religion, Culture & the Politics of Belonging",
         "vignette": (
             "A popular local bakery posts a photo celebrating a religious holiday that is not widely "
             "observed by the majority of the town. Within hours, a prominent local figure screenshots "
             "the post, claiming the bakery is 'erasing our traditional culture' and promoting dangerous "
-            "ideologies. Followers flood the bakery’s page with hostile reviews and calls for a boycott. "
-            "In response, a coalition of neighborhood residents organizes a 'buy-out' day, lining up "
+            "ideologies. Followers flood the bakery's page with hostile reviews and calls for a boycott. "
+            "In response, a coalition of neighbourhood residents organises a 'buy-out' day, lining up "
             "around the block to purchase pastries, hoping to drown out the hostility with a highly "
             "visible show of support and solidarity."
         ),
         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
-        "hateval_ids": [926, 493, 4287, 3824, 1872],
+        "datapoint_ids": ["B01","B02","B03","B04","B05","B06","B07","B08","B09","B10"],
         "opening_q": (
             "Reading through that passage — what feels most alive to you in it? "
-            "Is there something that resonates personally, or something that feels distant or foreign?"
+            "Is there something that resonates personally, or something that feels uncomfortable or foreign?"
+        ),
+    },
+    {
+        "id": "C",
+        "theme": "Gender, Identity & Whose Experience Counts",
+        "vignette": (
+            "A university student forum erupts after a well-known professor publishes an op-ed arguing "
+            "that 'identity politics has gone too far' and that certain protected categories now receive "
+            "more institutional sympathy than others. The comments split immediately: some students share "
+            "personal accounts of discrimination they say went unacknowledged, while others post "
+            "screenshots of what they describe as reverse bias in hiring and disciplinary processes. "
+            "A graduate student quietly posts a one-sentence reply — 'I've never once felt my experience "
+            "was counted the same as others here' — and it disappears under the wave of debate."
+        ),
+        "elicitation_focus": "identity, fairness, visibility, belonging, or feeling counted",
+        "datapoint_ids": ["C01","C02","C03","C04","C05","C06","C07","C08","C09","C10"],
+        "opening_q": (
+            "Reading through that passage — what's the first thing that strikes you? "
+            "Is there a moment, a feeling, or a person in it you find yourself drawn to?"
         ),
     },
 ]
 
-# SCENARIOS = [
-#     {
-#         "id": "A",
-#         "theme": "Borders, Safety & Who Belongs",
-#         "vignette": (
-#             "In many countries, debates about immigration have become inseparable from debates "
-#             "about national identity — who counts as a 'real' citizen, whether borders should be "
-#             "fortified or opened, and how to talk about crime and safety without stoking fear. "
-#             "These conversations happen in parliaments, on social media, and at kitchen tables. "
-#             "For some people, they are abstract political questions. "
-#             "For others, they touch directly on their own sense of place, safety, and belonging — "
-#             "or on the experiences of people they love."
-#         ),
-#         "elicitation_focus": "personal safety, national identity, belonging, or community ties",
-#         "hateval_ids": [4375, 4088, 1185, 3104, 4149],
-#         "opening_q": (
-#             "Reading through that passage — what stands out to you first? "
-#             "Is there something you connect with on a personal level?"
-#         ),
-#     },
-#     {
-#         "id": "B",
-#         "theme": "Crisis, Suffering & Who We Choose to See",
-#         "vignette": (
-#             "Every year, thousands of people make dangerous journeys across borders — "
-#             "fleeing war, persecution, or poverty. Their stories reach the public through "
-#             "news headlines, policy debates, and social media. Some people respond with calls "
-#             "for solidarity and systemic change. Others argue for stricter controls or question "
-#             "the scale of responsibility a country can or should take on. "
-#             "In between, there are millions of individual human stories that rarely make it "
-#             "into those debates — of families separated, of workers with no safety net, "
-#             "of children born into uncertainty."
-#         ),
-#         "elicitation_focus": "solidarity, responsibility, fairness, or witnessing suffering",
-#         "hateval_ids": [4368, 3069, 3324, 1245, 872],
-#         "opening_q": (
-#             "Reading through that passage — what resonates with you? "
-#             "Is there a word, an image, or a feeling that surfaces before anything else?"
-#         ),
-#     },
-#     {
-#         "id": "C",
-#         "theme": "Culture, Religion & the Politics of Belonging",
-#         "vignette": (
-#             "When people from different cultural or religious backgrounds share the same public space, "
-#             "questions arise about whose customs, whose language, and whose identity gets centred — "
-#             "and whose gets treated as foreign or suspect. "
-#             "These debates often overlap with questions about free speech: what can be said, "
-#             "what counts as criticism versus hostility, and who gets to decide. "
-#             "For some, these are questions of integration and national cohesion. "
-#             "For others, they are questions of dignity — of feeling welcome, seen, or safe "
-#             "in the place they call home."
-#         ),
-#         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
-#         "hateval_ids": [926, 493, 4287, 3824, 1872],
-#         "opening_q": (
-#             "Reading through that passage — what feels most alive to you in it? "
-#             "Is there something that resonates personally, or something that feels distant or foreign?"
-#         ),
-#     },
-# ]
-
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
 def init_participant(name: str) -> dict:
-    """Initializes a new session state for a participant purely in memory."""
     return {
         "name": name,
         "created_at": datetime.utcnow().isoformat(),
-        # Randomly assign a scenario to balance the distribution
         "scenario_id": random.choice(SCENARIOS)["id"],
         "workflow_stage": "disclosure",
         "disclosure": {},
@@ -283,64 +224,18 @@ def get_scenario(sid: str) -> dict:
     return next(s for s in SCENARIOS if s["id"] == sid)
 
 def get_datapoints(sid: str) -> list:
-    ids = set(get_scenario(sid)["hateval_ids"])
-    return [d for d in HATEVAL_DATAPOINTS if d["id"] in ids]
-
-# def get_participant_dir(name: str) -> str:
-#     safe = re.sub(r"[^a-zA-Z0-9_-]", "_", name.strip().lower())
-#     path = os.path.join(STORAGE_DIR, safe)
-#     os.makedirs(path, exist_ok=True)
-#     return path
-
-
-# def load_participant(name: str) -> dict:
-#     d = get_participant_dir(name)
-#     fp = os.path.join(d, "session.json")
-#     if os.path.exists(fp):
-#         with open(fp) as f:
-#             return json.load(f)
-#     existing = [x for x in os.listdir(STORAGE_DIR) if os.path.isdir(os.path.join(STORAGE_DIR, x))]
-#     scenario_idx = (len(existing) - 1) % len(SCENARIOS)
-#     return {
-#         "name": name,
-#         "created_at": datetime.utcnow().isoformat(),
-#         "scenario_id": SCENARIOS[scenario_idx]["id"],
-#         "workflow_stage": "disclosure",
-#         "disclosure": {},
-#         "elicitation": [],
-#         "micronarrative": "",
-#         "annotations": [],
-#         "version": "A",
-#     }
-
-
-# def save_participant(data: dict):
-#     d = get_participant_dir(data["name"])
-#     with open(os.path.join(d, "session.json"), "w") as f:
-#         json.dump(data, f, indent=2)
-
-
-# def get_scenario(sid: str) -> dict:
-#     return next(s for s in SCENARIOS if s["id"] == sid)
-
-
-# def get_datapoints(sid: str) -> list:
-#     ids = set(get_scenario(sid)["hateval_ids"])
-#     return [d for d in HATEVAL_DATAPOINTS if d["id"] in ids]
+    ids = set(get_scenario(sid)["datapoint_ids"])
+    return [d for d in DATAPOINTS if d["id"] in ids]
 
 # ─── LLM ──────────────────────────────────────────────────────────────────────
 
-def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
+def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
         return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
-    
-    # Build the message list natively for the client
     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
-    
     try:
-        # The client automatically handles the correct endpoint routing!
         response = client.chat_completion(
-            model="Qwen/Qwen2.5-7B-Instruct", 
+            model="Qwen/Qwen2.5-7B-Instruct",
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.7
@@ -348,134 +243,99 @@ def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> s
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
-# def call_mistral(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
-#     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
-#         return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
-#     fmt = f"[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n"
-#     for m in messages:
-#         fmt += f"{m['content']} [/INST] " if m["role"] == "user" else f"{m['content']} [INST] "
-#     fmt = fmt.rstrip(" [INST] ")
-#     try:
-#         r = requests.post(
-#             HF_API_URL,
-#             headers={"Authorization": f"Bearer {HF_TOKEN}"},
-#             json={"inputs": fmt, "parameters": {"max_new_tokens": max_tokens, "temperature": 0.7, "return_full_text": False}},
-#             timeout=50,
-#         )
-#         r.raise_for_status()
-#         res = r.json()
-#         return res[0].get("generated_text", "").strip() if isinstance(res, list) else str(res)
-#     except Exception as e:
-#         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
 # ─── Elicitation prompt builder ───────────────────────────────────────────────
 # Implements Willig (2013) turn structure + Rocchio (2022) domain-anchoring
 # + Smythe (2008) hermeneutic circle from turn 3 onward.
+# Hard 5-turn cap: wind-down at turn 4, mandatory READY_TO_BUILD at turn 5.
 
-# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-#     focus = scenario["elicitation_focus"]
-#     p = (
-#         "You are a research interviewer. Your only job is to ask ONE good follow-up question "
-#         "that helps the participant explore their lived experience — not their political opinions. "
-#         "Strict rules: 2–3 sentences maximum; do not summarize what they said; do not ask multiple questions; "
-#         "do not use vague prompts like 'tell me more' or 'can you elaborate'; "
-#         f"anchor your question to one specific axis from: {focus}. "
-#         "A good question names something concrete the person just said and asks what made it personally significant."
-#     )
-#     if user_turns == 1:
-#         # Turn 1: Harm/target cue (Willig 2013)
-#         p += (
-#             " This turn specifically: ask who, if anyone, they see as most affected by the tensions "
-#             "described in the scenario — and whether that connects to anyone in their own life."
-#         )
-#     elif user_turns == 2:
-#         # Turn 2: Domain-driver (Rocchio 2022) — give axes explicitly so they can pick
-#         p += (
-#             f" This turn specifically: offer them the axes explicitly — {focus} — and ask which one "
-#             "feels most personally alive right now, and why. Giving them the options helps people "
-#             "surface values they wouldn't otherwise name."
-#         )
-#     elif user_turns >= 3:
-#         # Turn 3+: Hermeneutic circle — reference prior answer (Smythe 2008)
-#         p += (
-#             f' This turn specifically: reference something from what they just said — '
-#             f'"{last_user[:140]}" — and ask what makes that personally significant. '
-#             "Not just what happened, but why it matters or what it meant to them."
-#         )
-#     if user_turns == 4 or user_turns == 5:
-#         p += (
-#             "\n\nIf the participant has touched on at least one lived-experience axis with "
-#             "personal detail (enough for a 4–5 sentence narrative), end your message with: READY_TO_BUILD"
-#         )
-#     elif user_turns >= 6:
-#         p += (
-#             "\n\nCRITICAL INSTRUCTION: This is the absolute final turn. You must warmly thank the participant "
-#             "for sharing in 1 short sentence, and you MUST end your message with the exact phrase: READY_TO_BUILD"
-#         )
+AXES_CONTEXT = """\
+Use the following seven lived-experience axes as lenses to guide each question. \
+Do not name the axes explicitly — let your question naturally open up that dimension of experience:
 
-    # return p
-
-# ─── Elicitation prompt builder ───────────────────────────────────────────────
+1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems, urban/rural
+2. Linguistic Background & Dialect — native language, multilingualism, how they navigate registers
+3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power dynamics
+4. Race & Ethnicity — racial identity, historical marginalization, how they are perceived by others
+5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
+6. Disability & Neurodivergence — physical, cognitive, or sensory experience; what 'normal' excludes
+7. Epistemic Proximity — how close or distant they personally are from the people most affected\
+"""
 
 def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-    axes_context = (
-        "1. Sense of Self (introspective reflection, personal identity, memory)\n"
-        "2. Social & Cultural (community ties, cultural background, moral alignment)\n"
-        "3. Wellbeing (emotional impact, mental health, feelings of safety)"
-    )
-
     p = (
-        "You are an empathetic qualitative research interviewer. "
-        "The participant just read the following scenario:\n"
+        "You are an empathetic qualitative research interviewer conducting a lived-experience elicitation. "
+        "The participant just read this scenario:\n"
         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
-        "Your goal is to guide them to reflect on this scenario through specific dimensions of their own lived experience.\n"
-        f"LIVED EXPERIENCE AXES:\n{axes_context}\n\n"
-        "RULES:\n"
-        "- 1 to 2 sentences maximum.\n"
-        "- Never summarize what they just said.\n"
-        "- Never ask more than one question at a time.\n\n"
+        f"{AXES_CONTEXT}\n\n"
+        "STRICT RULES:\n"
+        "- Ask exactly ONE question per turn. Never two questions in one response.\n"
+        "- 1–2 sentences maximum. No preamble, no summaries.\n"
+        "- Never paraphrase or reflect back what the participant just said.\n"
+        "- Never use vague prompts like 'tell me more' or 'can you elaborate'.\n"
+        "- Ground every question in something concrete the participant just said or implied.\n\n"
     )
 
-    # Turn-specific instructions
     if user_turns == 1:
         p += (
-            "CURRENT STAGE: TURN 1 (Initial Reaction).\n"
-            "INSTRUCTION: Identify the core emotion they shared. Ask a single question connecting that reaction "
-            "to ONE of the Lived Experience Axes (e.g., how it ties into their community, or their sense of safety)."
+            "TURN 1 — GROUNDING:\n"
+            "Identify the most emotionally charged or specific thing they said. "
+            "Ask a single question connecting that reaction to their relationship "
+            "to the people, place, or tension in the scenario "
+            "(axes 1, 4, or 7 are usually best here)."
         )
     elif user_turns == 2:
         p += (
-            "CURRENT STAGE: TURN 2 (Pivot).\n"
-            "INSTRUCTION: Gently pivot to a DIFFERENT axis from the list that they haven't explored yet. "
+            "TURN 2 — PIVOT:\n"
+            "Move to a DIFFERENT axis from the list — one they haven't touched yet. "
+            "A good pivot opens up a new dimension of their experience: for example, "
+            "how their language background, class position, or gender shapes how they read this."
         )
-    elif user_turns >= 3:
+    elif user_turns == 3:
         p += (
-            "CURRENT STAGE: TURN 3+ (Deepening).\n"
-            f"INSTRUCTION: Reference a specific detail they mentioned earlier \"{last_user}...\" "
-            "Ask them to provide a specific memory or concrete example from their own life that explains WHY they feel that way."
+            "TURN 3 — DEEPENING:\n"
+            "Ask for a concrete personal memory or lived example that explains "
+            f"WHY they feel the way they described. Reference something specific they said: "
+            f"\"{last_user[:180]}\". Push past opinion into experience."
+        )
+    elif user_turns >= 4:
+        p += (
+            "TURN 4 — CLOSING:\n"
+            "Ask one final question inviting them to reflect on how their identity, background, "
+            "values, or beliefs — broadly understood — shaped the way they read this scenario. "
+            "This should feel like a natural, gentle closing of the conversation."
         )
 
-    # Stopping logic
-    if user_turns == 4 or user_turns == 5:
+    if user_turns == 4:
         p += (
-            "\n\nSTOPPING CONDITION: If the participant has provided enough personal detail to form a coherent "
-            "4-5 sentence story, you MUST end your response with the exact text: READY_TO_BUILD"
+            "\n\nSTOPPING CONDITION: If the participant has shared enough personal detail across "
+            "the conversation to support a coherent 4–5 sentence narrative, "
+            "end your response with the exact text: READY_TO_BUILD"
         )
-    elif user_turns >= 6:
+    elif user_turns >= 5:
         p += (
-            "\n\nCRITICAL OVERRIDE: This is the absolute final turn (Turn 6). You are strictly forbidden from asking "
-            "another question. You must warmly thank the participant in 1 sentence, and append the exact text: READY_TO_BUILD"
+            "\n\nCRITICAL OVERRIDE — TURN 5 IS THE ABSOLUTE FINAL TURN. "
+            "You are forbidden from asking another question. "
+            "Thank the participant warmly in one sentence. "
+            "You MUST append the exact text: READY_TO_BUILD"
         )
 
     return p
 
-SYNTHESIS_SYS = (
-    "Write a first-person narrative based on the participant's responses. "
-    "Rules: use 'I' throughout; preserve the participant's own specific words and framing; "
-    "do NOT add feelings or interpretations they didn't express; "
-    "friendly, natural tone — not clinical or academic; "
-    "output ONLY the narrative, no preamble or explanation."
-)
+
+SYNTHESIS_SYS = """\
+Write a first-person narrative (minimum 120 words) that faithfully captures what this participant shared.
+
+Rules:
+- Use 'I' throughout.
+- Preserve the participant's own specific words and phrases wherever possible — do not sanitise their voice.
+- Do NOT add feelings, interpretations, or experiences they did not express.
+- Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
+emotional response, sense of identity or belonging, relationship to the community depicted).
+- The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
+- Friendly, natural, warm tone — not clinical or academic.
+- Do not include a title or preamble. Output ONLY the narrative text.\
+"""
 
 # ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -487,9 +347,9 @@ def inject_styles():
     h1, h2 { font-family: 'Lora', serif; font-weight: 400; letter-spacing: -0.01em; }
     .stApp { background: #000000; }
     .stTextInput input, .stTextArea textarea, [data-testid="stChatInput"] {
-        background-color: #222222 !important; 
-        border: 1px solid #444444 !important; 
-        color: #F0F0F0 !important; 
+        background-color: #222222 !important;
+        border: 1px solid #444444 !important;
+        color: #F0F0F0 !important;
         border-radius: 8px !important;
     }
     .vignette-card {
@@ -498,99 +358,127 @@ def inject_styles():
         font-size: 0.96rem; line-height: 1.85; color: #2A2A2A; font-style: italic;
     }
     .tweet-card {
-    background: #111111;              /* dark card instead of white */
-    border: 1px solid #2A2A2A;        /* subtle border */
-    border-radius: 10px;              /* slightly softer */
-    padding: 1.2rem 1.4rem;
-    font-size: 1rem;
-    line-height: 1.7;
-    color: #EAEAEA;                  /* readable text */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6);  /* deeper shadow for depth */
-    margin-bottom: 1.2rem;
-}
-
-.meta-pill {
-    display: inline-block;
-    background: #222;                /* darker pill */
-    border-radius: 12px;
-    font-size: 0.7rem;
-    padding: 3px 10px;
-    color: #B5B5B5;                  /* softer gray text */
-    margin-right: 6px;
-}
-    # .tweet-card {
-    #     background: #fff; border: 1px solid #E0DBD0; border-radius: 8px;
-    #     padding: 1.1rem 1.3rem; font-size: 1rem; line-height: 1.65;
-    #     box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 1.2rem;
-    # }
-    # .meta-pill {
-    #     display: inline-block; background: #E8E4DC; border-radius: 12px;
-    #     font-size: 0.7rem; padding: 2px 9px; color: #777; margin-right: 5px;
-    # }
-    .prog-bg { background: #DDD9D0; border-radius: 20px; height: 5px; margin: 0.4rem 0 1.4rem 0; }
+        background: #111111;
+        border: 1px solid #2A2A2A;
+        border-radius: 10px;
+        padding: 1.2rem 1.4rem;
+        font-size: 1rem;
+        line-height: 1.7;
+        color: #EAEAEA;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        margin-bottom: 1.2rem;
+    }
+    .meta-pill {
+        display: inline-block;
+        background: #222;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        padding: 3px 10px;
+        color: #B5B5B5;
+        margin-right: 6px;
+    }
+    .prog-bg { background: #2A2A2A; border-radius: 20px; height: 5px; margin: 0.4rem 0 1.4rem 0; }
     .prog-fill { background: #8B6F47; height: 5px; border-radius: 20px; }
     .step-label { font-size: 0.71rem; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
     div[data-testid="stChatMessage"] { background: transparent !important; }
+    .word-counter-ok { color: #6FCF97; font-size: 0.8rem; margin-top: 4px; }
+    .word-counter-low { color: #EB5757; font-size: 0.8rem; margin-top: 4px; }
+    .chat-replay {
+        background: #0D0D0D;
+        border: 1px solid #2A2A2A;
+        border-radius: 8px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 1.2rem;
+        font-size: 0.88rem;
+        line-height: 1.75;
+        color: #C8C8C8;
+    }
+    .chat-replay .label {
+        color: #8B6F47; font-weight: 600;
+        font-size: 0.75rem; letter-spacing: 0.07em;
+        text-transform: uppercase; display: block;
+        margin-bottom: 0.6rem;
+    }
+    .chat-replay .turn { margin-bottom: 0.9rem; }
+    .chat-replay .q { color: #9E9E9E; margin-bottom: 0.2rem; font-style: italic; }
+    .chat-replay .a { color: #E0E0E0; padding-left: 0.8rem; border-left: 2px solid #333; }
     </style>
     """, unsafe_allow_html=True)
-    
-
 
 def prog(step, total):
     pct = int(step / total * 100)
-    st.markdown(f"<div class='prog-bg'><div class='prog-fill' style='width:{pct}%'></div></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='prog-bg'><div class='prog-fill' style='width:{pct}%'></div></div>",
+        unsafe_allow_html=True
+    )
+
+def render_word_counter(text: str, minimum: int):
+    words = len(text.strip().split()) if text.strip() else 0
+    if words >= minimum:
+        st.markdown(f"<div class='word-counter-ok'>✓ {words} words</div>", unsafe_allow_html=True)
+    else:
+        remaining = minimum - words
+        st.markdown(
+            f"<div class='word-counter-low'>{words} / {minimum} words — {remaining} more to go</div>",
+            unsafe_allow_html=True
+        )
+
+def render_chat_replay(elicitation: list):
+    """Renders a compact Q&A transcript of the elicitation exchange."""
+    pairs = []
+    for i, m in enumerate(elicitation):
+        if m["role"] == "assistant":
+            answer = elicitation[i + 1]["content"] if i + 1 < len(elicitation) and elicitation[i + 1]["role"] == "user" else None
+            if answer:
+                pairs.append((m["content"], answer))
+
+    html = "<div class='chat-replay'><span class='label'>Your conversation</span>"
+    for q, a in pairs:
+        html += (
+            f"<div class='turn'>"
+            f"<div class='q'>{q}</div>"
+            f"<div class='a'>{a}</div>"
+            f"</div>"
+        )
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+def scroll_to_bottom():
+    """JS to scroll the last chat message into view."""
+    st.components.v1.html(
+        """
+        <script>
+        (function() {
+            var msgs = window.parent.document.querySelectorAll('[data-testid="stChatMessage"]');
+            if (msgs.length > 0) {
+                msgs[msgs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    st.set_page_config(page_title="Immigration & Belonging — Pilot Study", layout="centered", page_icon="🗣")
+    st.set_page_config(
+        page_title="Hate Speech & Belonging — Pilot Study",
+        layout="centered",
+        page_icon="🗣"
+    )
     inject_styles()
-    # os.makedirs(STORAGE_DIR, exist_ok=True)
 
-    # # Sign-in
-    # if "participant_name" not in st.session_state:
-    #     st.markdown("<div class='step-label'>Pilot Study · Version A</div>", unsafe_allow_html=True)
-    #     st.title("Immigration & Belonging")
-    #     st.markdown("*A positionality-aware annotation study*")
-    #     st.markdown("---")
-    #     st.markdown(
-    #         "This study takes about **15–20 minutes**. You'll first share a bit about your own "
-    #         "perspective on immigration and belonging, then annotate a small set of social media posts."
-    #     )
-    #     name = st.text_input("Enter your first name or a pseudonym — or the same name as before (if you have done this pilot study before) to continue:")
-    #     if st.button("Begin →", type="primary") and name.strip():
-    #         st.session_state.participant_name = name.strip()
-    #         st.session_state.pdata = load_participant(name.strip())
-    #         st.rerun()
-    #     return
-
-    # if "pdata" not in st.session_state:
-    #     st.session_state.pdata = load_participant(st.session_state.participant_name)
-
-    # data = st.session_state.pdata
-    # scenario = get_scenario(data["scenario_id"])
-    # stage = data["workflow_stage"]
-
-    # with st.sidebar:
-    #     st.markdown(f"**{data['name']}**")
-    #     st.markdown(f"*{scenario['theme']}*")
-    #     labels = {"disclosure": "1 — Background", "elicitation_chat": "2 — Your experience",
-    #               "synthesis": "3 — Your narrative", "annotation": "4 — Annotations", "complete": "✓ Done"}
-    #     st.caption(labels.get(stage, stage))
-    #     st.markdown("---")
-    #     if st.button("Save & pause"):
-    #         save_participant(data)
-    #         st.success("Saved. Return any time with the same name.")
-
-    # Sign-in
+    # ── SIGN-IN ───────────────────────────────────────────────────────────────
     if "participant_name" not in st.session_state:
         st.markdown("<div class='step-label'>Pilot Study · Version A</div>", unsafe_allow_html=True)
-        st.title("Immigration & Belonging")
+        st.title("Hate Speech & Belonging")
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about **15–20 minutes**. You'll first share a bit about your own "
-            "perspective on immigration and belonging, then annotate a small set of social media posts."
+            "This study takes about **20–25 minutes**. You'll first share a bit about your own "
+            "perspective and experiences, then read and annotate a small set of social media posts. "
+            "There are no right or wrong answers."
         )
         name = st.text_input("Enter your first name or a pseudonym:")
         if st.button("Begin →", type="primary") and name.strip():
@@ -609,98 +497,154 @@ def main():
     with st.sidebar:
         st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
-        labels = {"disclosure": "1 — Background", "elicitation_chat": "2 — Your experience",
-                  "synthesis": "3 — Your narrative", "annotation": "4 — Annotations", "complete": "✓ Done"}
+        labels = {
+            "disclosure": "1 — Background",
+            "elicitation_chat": "2 — Your experience",
+            "synthesis": "3 — Your narrative",
+            "annotation": "4 — Annotations",
+            "complete": "✓ Done"
+        }
         st.caption(labels.get(stage, stage))
         st.markdown("---")
-        st.caption("Data is temporarily held in memory and saved securely at the end.")
+        st.caption("Data is held in memory and saved securely at the end.")
 
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
     if stage == "disclosure":
         st.markdown("<div class='step-label'>Step 1 of 4</div>", unsafe_allow_html=True)
         st.title("A bit about you")
         prog(1, 4)
-        st.write("Before we begin, we'd like to understand your connection to this topic. This context shapes how we interpret your annotations — it won't affect your participation.")
+        st.write(
+            "Before we begin, we'd like to understand your connection to this topic. "
+            "This context shapes how we interpret your annotations — it won't affect your participation."
+        )
 
         conn = st.selectbox(
-            "How would you describe your connection to topics of immigration or belonging?",
-            ["I have direct personal experience (as an immigrant, refugee, or child of one)",
-             "I'm a caregiver, partner, or close community member of someone with this experience",
-             "I work or study in this area professionally or academically",
-             "I'm an interested observer — no direct personal connection"],
+            "How would you describe your connection to topics of immigration, religion, or identity and belonging?",
+            [
+                "— please select —",
+                "I have direct personal experience (as an immigrant, refugee, religious minority, or member of a marginalised group)",
+                "I'm a caregiver, partner, or close community member of someone with this experience",
+                "I work or study in this area professionally or academically",
+                "I'm an interested observer — no direct personal connection",
+            ],
         )
-        duration = st.text_input("How long has this been part of your life or work? (e.g., 'my whole life', '3 years')")
+        duration = st.text_input(
+            "How long has this been part of your life or work? (e.g., 'my whole life', '3 years')"
+        )
         disclosure = st.text_area(
             "Briefly describe how this topic relates to your life. "
             "This stays confidential and helps us contextualise your responses.",
-            height=100, placeholder="e.g. My parents immigrated to Canada in the 1990s...",
+            height=100,
+            placeholder="e.g. My parents immigrated to Canada in the 1990s...",
         )
+
         if st.button("Continue →", type="primary"):
-            data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
-            data["workflow_stage"] = "elicitation_chat"
-            # save_participant(data)
-            st.rerun()
+            if conn == "— please select —":
+                st.warning("Please select an option before continuing.")
+            elif not duration.strip():
+                st.warning("Please fill in how long this topic has been part of your life.")
+            else:
+                data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
+                data["workflow_stage"] = "elicitation_chat"
+                st.rerun()
 
     # ── STAGE 2: ELICITATION ──────────────────────────────────────────────────
     elif stage == "elicitation_chat":
         st.markdown("<div class='step-label'>Step 2 of 4 — Your Experience</div>", unsafe_allow_html=True)
         st.title("Your perspective")
         prog(2, 4)
-        st.markdown(f"<div class='vignette-card'>{scenario['vignette']}</div>", unsafe_allow_html=True)
-        st.caption("Read the passage above, then respond below. Aim for 2-3 sentences per reply.")
 
+        # Instruction BEFORE the passage
+        st.write(
+            "Read the passage below, then respond to the interviewer's questions in the chat. "
+            "There are no right answers — we're interested in your genuine reactions and "
+            "personal experiences. Aim for 2–3 sentences per reply."
+        )
+        st.markdown(f"<div class='vignette-card'>{scenario['vignette']}</div>", unsafe_allow_html=True)
+
+        # Render chat history
         for msg in data["elicitation"]:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
+        # Seed opening question on first load
         if not data["elicitation"]:
             data["elicitation"].append({"role": "assistant", "content": scenario["opening_q"]})
-            # save_participant(data)
             st.rerun()
-        
-        if user_input := st.chat_input("Your response…"):
-            data["elicitation"].append({"role": "user", "content": user_input})
-            # save_participant(data)
-            user_turns = sum(1 for m in data["elicitation"] if m["role"] == "user")
-            st.caption(f"*(Debug: AI is currently on Turn {user_turns})*")
-            sys_p = elicitation_sys(scenario, user_turns, user_input)
-            response = call_mistral(sys_p, data["elicitation"], max_tokens=160)
-            if "READY_TO_BUILD" in response:
-                clean = response.replace("READY_TO_BUILD", "").strip()
-                if clean:
-                    data["elicitation"].append({"role": "assistant", "content": clean})
+
+        user_turns = sum(1 for m in data["elicitation"] if m["role"] == "user")
+        max_turns = 5
+
+        if user_turns < max_turns:
+            if user_input := st.chat_input("Your response…"):
+                data["elicitation"].append({"role": "user", "content": user_input})
+                sys_p = elicitation_sys(scenario, user_turns + 1, user_input)
+                response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
+
+                if "READY_TO_BUILD" in response:
+                    clean = response.replace("READY_TO_BUILD", "").strip()
+                    if clean:
+                        data["elicitation"].append({"role": "assistant", "content": clean})
+                    data["workflow_stage"] = "synthesis"
+                else:
+                    data["elicitation"].append({"role": "assistant", "content": response})
+                st.rerun()
+        else:
+            # Auto-advance after hard cap
+            if data["workflow_stage"] == "elicitation_chat":
                 data["workflow_stage"] = "synthesis"
-            else:
-                data["elicitation"].append({"role": "assistant", "content": response})
-            # save_participant(data)
-            st.rerun()
+                st.rerun()
+
+        scroll_to_bottom()
 
     # ── STAGE 3: SYNTHESIS ────────────────────────────────────────────────────
     elif stage == "synthesis":
         st.markdown("<div class='step-label'>Step 3 of 4 — Your Narrative</div>", unsafe_allow_html=True)
         st.title("Your story, in your words")
         prog(3, 4)
-        st.write("Based on what you shared, we've drafted a short narrative in your voice. Edit anything that doesn't feel accurate, then accept it to continue.")
+        st.write(
+            "Based on what you shared, we've drafted a short narrative in your voice. "
+            "Edit anything that doesn't feel accurate or complete, then accept it to continue."
+        )
+
+        # Q&A replay shown above the narrative
+        render_chat_replay(data["elicitation"])
 
         if not data.get("micronarrative"):
             with st.spinner("Drafting your narrative…"):
-                fragments = "\n".join(m["content"] for m in data["elicitation"] if m["role"] == "user")
-                data["micronarrative"] = call_mistral(SYNTHESIS_SYS, [{"role": "user", "content": fragments}], max_tokens=200)
-                # save_participant(data)
+                fragments = "\n".join(
+                    m["content"] for m in data["elicitation"] if m["role"] == "user"
+                )
+                data["micronarrative"] = call_qwen(
+                    SYNTHESIS_SYS,
+                    [{"role": "user", "content": fragments}],
+                    max_tokens=400
+                )
 
-        edited = st.text_area("Your narrative (edit freely):", value=data["micronarrative"], height=190)
+        edited = st.text_area(
+            "Your narrative (edit freely):",
+            value=data["micronarrative"],
+            height=230
+        )
+        nar_words = len(edited.strip().split()) if edited.strip() else 0
+        render_word_counter(edited, 80)
+
         c1, c2 = st.columns([1, 2])
         with c1:
             if st.button("↺ Regenerate"):
                 data["micronarrative"] = ""
-                # save_participant(data)
                 st.rerun()
         with c2:
             if st.button("Accept & start annotations →", type="primary"):
-                data["micronarrative"] = edited
-                data["workflow_stage"] = "annotation"
-                # save_participant(data)
-                st.rerun()
+                if nar_words < 80:
+                    st.warning(
+                        f"Your narrative is {nar_words} words. "
+                        "Please expand it to at least 80 words before continuing."
+                    )
+                else:
+                    data["micronarrative"] = edited
+                    data["workflow_stage"] = "annotation"
+                    st.rerun()
 
     # ── STAGE 4: ANNOTATION ───────────────────────────────────────────────────
     elif stage == "annotation":
@@ -709,108 +653,140 @@ def main():
 
         if idx < len(datapoints):
             dp = datapoints[idx]
-            st.markdown(f"<div class='step-label'>Step 4 of 4 — Post {idx+1} of {len(datapoints)}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='step-label'>Step 4 of 4 — Post {idx+1} of {len(datapoints)}</div>",
+                unsafe_allow_html=True
+            )
             st.title("Annotating social media posts")
             prog(idx + 1, len(datapoints))
-            st.write("You'll now read and annotate five social media posts related to immigration. There are no right or wrong answers — your interpretation is the data.")
+            st.write(
+                "You'll now read and annotate ten social media posts. "
+                "There are no right or wrong answers — your interpretation is the data."
+            )
 
+            # Q&A + narrative accessible as collapsible above the post
+            with st.expander("Your lived experience narrative (tap to view)", expanded=False):
+                render_chat_replay(data["elicitation"])
+                st.markdown("---")
+                st.markdown(f"*{data['micronarrative']}*")
+
+            # Instruction BEFORE the passage (improves flow)
+            st.markdown("**Read the post below, then answer the questions.**")
             st.markdown(
                 f"<div class='tweet-card'>"
                 f"<span class='meta-pill'>Post {idx+1} of {len(datapoints)}</span>"
-                # f"<span class='meta-pill'>ambiguity score: {dp['combined_score']:.2f}</span>"
+                f"<span class='meta-pill'>{dp['domain']}</span>"
                 f"<br><br>{dp['text']}</div>",
                 unsafe_allow_html=True,
             )
 
             with st.form(f"anno_{idx}"):
+
+                # Q1: Label — no default (index=None)
                 st.markdown("**1. How would you label this post?**")
-                label = st.radio("", [
-                    "Hate speech — dehumanises or incites harm toward a person or group",
-                    "Borderline — potentially harmful, but depends on context or intent",
-                    "Not hate speech — critical, blunt, or politically charged but not hateful",
-                ], label_visibility="collapsed")
-
-                st.markdown("**2. If harm is present, who seems most targeted?**")
-                target = st.radio("", [
-                    "A specific individual",
-                    "Immigrants or refugees as a group",
-                    "A religious or ethnic community",
-                    "No specific target — it's about a policy or event",
-                    "Unclear",
-                ], label_visibility="collapsed")
-
-                st.markdown(
-                    "**3. Your rationale** — 3–4 sentences. "
-                    "What specific words or framing led to your label? "
-                    "What makes this feel harmful, ambiguous, or acceptable?"
+                label = st.radio(
+                    "",
+                    options=[
+                        "Hate speech — dehumanises or incites harm toward a person or group",
+                        "Borderline — potentially harmful, but depends on context or intent",
+                        "Not hate speech — critical, blunt, or politically charged but not hateful",
+                    ],
+                    index=None,
+                    label_visibility="collapsed"
                 )
-                rationale = st.text_area("", height=140, label_visibility="collapsed",
-                    placeholder="e.g. The phrase '...' implies... because... What makes this different from policy criticism is...")
 
-                # Positionality salience — reflexivity framing (Smythe 2008), not bias admission
-                st.markdown("**4. How relevant did your own background feel as you read this post?**")
-                st.caption("1 = not at all relevant to my experience · 5 = very relevant")
-                salience = st.slider("", 1, 5, 3, label_visibility="collapsed")
+                st.markdown("---")
 
-                if st.form_submit_button("Submit & next →", type="primary"):
-                    words = len(rationale.strip().split())
-                    if words < 35:
-                        st.warning(f"Your rationale is {words} words — please expand to 3–4 full sentences (aim for 35+ words). The detail you provide is the most valuable part of the study.")
+                # Q2: Target — no default
+                st.markdown("**2. If harm is present, who seems most targeted?**")
+                target = st.radio(
+                    "",
+                    options=[
+                        "A specific individual",
+                        "Immigrants, refugees, or a racialised group",
+                        "A religious community",
+                        "A gender or LGBTQ+ community",
+                        "No specific target — it's about a policy or idea",
+                        "Unclear",
+                    ],
+                    index=None,
+                    label_visibility="collapsed"
+                )
+
+                st.markdown("---")
+
+                # Q3: Rationale with live word counter
+                st.markdown(
+                    f"**3. Your rationale** *(minimum {MIN_RATIONALE_WORDS} words)*"
+                )
+                st.caption(
+                    "What specific language, framing, or context shaped your judgement? "
+                    "Did any aspect of your identity, beliefs, values, or lived experience "
+                    "affect how you read this post?"
+                )
+                rationale = st.text_area(
+                    "",
+                    height=170,
+                    label_visibility="collapsed",
+                    placeholder=(
+                        "e.g. The phrase '...' stood out to me because... "
+                        "My background made me read this differently in that... "
+                        "What makes this feel harmful / ambiguous / acceptable is..."
+                    )
+                )
+                rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
+                render_word_counter(rationale, MIN_RATIONALE_WORDS)
+
+                st.markdown("---")
+
+                # Q4: Positionality salience — no default, improved label
+                st.markdown(
+                    "**4. How relevant did your identity or personal experience feel "
+                    "to how much this post resonated with you?**"
+                )
+                st.caption("1 = not at all relevant to my identity or experience · 5 = very much so")
+                salience = st.slider("", 1, 5, value=None, label_visibility="collapsed")
+
+                submitted = st.form_submit_button("Submit & next →", type="primary")
+
+                if submitted:
+                    errors = []
+                    if label is None:
+                        errors.append("Please select a label for question 1.")
+                    if target is None:
+                        errors.append("Please select a target for question 2.")
+                    if rationale_words < MIN_RATIONALE_WORDS:
+                        errors.append(
+                            f"Your rationale is {rationale_words} words — please expand to at least "
+                            f"{MIN_RATIONALE_WORDS} words. The detail you provide is the most valuable "
+                            "part of the study."
+                        )
+                    if salience is None:
+                        errors.append("Please move the slider in question 4.")
+
+                    if errors:
+                        for e in errors:
+                            st.warning(e)
                     else:
                         data["annotations"].append({
-                            "tweet_id": dp["id"], "tweet_text": dp["text"],
-                            "hateval_hs": dp["hs"], "hateval_ag": dp["ag"], "hateval_tr": dp["tr"],
-                            "combined_score": dp["combined_score"],
-                            "participant_label": label, "participant_target": target,
-                            "rationale": rationale, "positionality_salience": salience,
+                            "datapoint_id": dp["id"],
+                            "domain": dp["domain"],
+                            "tweet_text": dp["text"],
+                            "participant_label": label,
+                            "participant_target": target,
+                            "rationale": rationale,
+                            "positionality_salience": salience,
                             "timestamp": datetime.utcnow().isoformat(),
                         })
-                        # save_participant(data)
                         st.rerun()
-        # else:
-        #     data["workflow_stage"] = "complete"
-        #     # save_participant(data)
-        #     st.rerun()
-        # else:
-            # # --- ONE-TIME GOOGLE SHEETS SAVE ---
-            # with st.spinner("Saving your responses securely..."):
-            #     try:
-            #         conn = st.connection("gsheets", type=GSheetsConnection)
-                    
-            #         new_row = {
-            #             "Name": data["name"],
-            #             "Timestamp": datetime.now().isoformat(),
-            #             "Scenario": data["scenario_id"],
-            #             "Connection_Type": data["disclosure"].get("connection_type", ""),
-            #             "Duration": data["disclosure"].get("duration", ""),
-            #             "Disclosure_Text": data["disclosure"].get("text", ""),
-            #             "Micronarrative": data["micronarrative"],
-            #             "Chat_Log": json.dumps(data["elicitation"]),
-            #             "Annotations": json.dumps(data["annotations"])
-            #         }
-                    
-            #         # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
-            #         SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
-                    
-            #         # existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()))
-            #         existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
-            #         updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
-                    
-            #         conn.update(spreadsheet=SHEET_URL, data=updated_data)
-                    
-            #         data["workflow_stage"] = "complete"
-            #         st.rerun()
-            #     except Exception as e:
-            #         st.error(f"Failed to save to database. Please leave this window open and contact the researcher. Error: {e}")
+
         else:
-            # --- ONE-TIME GOOGLE SHEETS SAVE ---
-            with st.spinner("Saving your responses securely..."):
+            # All annotations done — save to Google Sheets
+            with st.spinner("Saving your responses securely…"):
                 max_retries = 3
-                
                 for attempt in range(max_retries):
                     try:
                         conn = st.connection("gsheets", type=GSheetsConnection)
-                        
                         new_row = {
                             "Name": data["name"],
                             "Timestamp": datetime.now().isoformat(),
@@ -822,28 +798,28 @@ def main():
                             "Chat_Log": json.dumps(data["elicitation"]),
                             "Annotations": json.dumps(data["annotations"])
                         }
-                        
-                        # REPLACE THIS URL WITH YOUR ACTUAL SHEET URL
-                        SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
-                        
-                        existing_data = conn.read(spreadsheet=SHEET_URL, usecols=list(new_row.keys()), ttl=0)
-                        updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
-                        
+                        existing_data = conn.read(
+                            spreadsheet=SHEET_URL,
+                            usecols=list(new_row.keys()),
+                            ttl=0
+                        )
+                        updated_data = pd.concat(
+                            [existing_data, pd.DataFrame([new_row])],
+                            ignore_index=True
+                        )
                         conn.update(spreadsheet=SHEET_URL, data=updated_data)
-                        
-                        # If it gets here without crashing, it was successful!
                         data["workflow_stage"] = "complete"
                         st.rerun()
-                        break  # Stop the loop since it worked
-                        
+                        break
                     except Exception as e:
-                        # If it fails, check if we have tries left
                         if attempt < max_retries - 1:
-                            time.sleep(2)  # Wait 2 seconds and let the loop try again
+                            time.sleep(2)
                         else:
-                            # If it failed all 3 times, show the final error
-                            st.error(f"Failed to save to database after {max_retries} attempts. Please leave this window open and contact the researcher. Error: {e}")
-
+                            st.error(
+                                f"Failed to save after {max_retries} attempts. "
+                                "Please leave this window open and contact the researcher. "
+                                f"Error: {e}"
+                            )
 
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     elif stage == "complete":
@@ -854,7 +830,7 @@ def main():
             "The perspectives you bring — including your background and lived experience — "
             "are what makes this kind of research meaningful."
         )
-        st.caption("Pilot study by Sheza Munir · Data stored · You may close this window.")
+        st.caption("Pilot study by Sheza Munir · Data stored securely · You may close this window.")
 
 
 if __name__ == "__main__":
