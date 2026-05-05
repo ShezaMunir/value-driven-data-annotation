@@ -254,108 +254,235 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             model="Qwen/Qwen2.5-7B-Instruct",
             messages=formatted_messages,
             max_tokens=max_tokens,
-            temperature=0.7
+            temperature=0.3
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
 
-AXES_CONTEXT = """\
-The seven lived-experience axes below are lenses for your questions. \
-Do not name them or list them to the participant — use them invisibly to guide what you ask about:
+# AXES_CONTEXT = """\
+# The seven lived-experience axes below are lenses for your questions. \
+# Do not name them or list them to the participant — use them invisibly to guide what you ask about:
 
-1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems
-2. Linguistic Background & Dialect — native language, multilingualism, code-switching
-3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power
-4. Race & Ethnicity — racial identity, marginalization, how others perceive them
-5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
-6. Disability & Neurodivergence — physical, cognitive, or sensory experience
-7. Epistemic Proximity — how personally close they are to the people most affected\
+# 1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems
+# 2. Linguistic Background & Dialect — native language, multilingualism, code-switching
+# 3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power
+# 4. Race & Ethnicity — racial identity, marginalization, how others perceive them
+# 5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
+# 6. Disability & Neurodivergence — physical, cognitive, or sensory experience
+# 7. Epistemic Proximity — how personally close they are to the people most affected\
+# """
+
+# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
+#     p = (
+#         "You are a warm, curious qualitative research interviewer doing a lived-experience elicitation. "
+#         "The participant just read this scenario:\n"
+#         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
+#         f"{AXES_CONTEXT}\n\n"
+#         "CORE RULES — follow these every turn:\n"
+#         "- Ask exactly ONE question. Never two.\n"
+#         "- 1–2 sentences maximum. No preamble, no summaries, no affirmations like 'great' or 'I see'.\n"
+#         "- Never paraphrase what they just said back to them.\n"
+#         "- If their answer was thin, vague, or a single word, do NOT pivot to a new axis. "
+#         "  Stay with what they just raised and ask for a concrete moment or example from their life.\n"
+#         "- Only move to a new axis when the participant has given a substantive answer on the current one.\n"
+#         "- Ground every question in something specific they actually said — not generic.\n\n"
+#     )
+
+#     if user_turns == 1:
+#         p += (
+#             "TURN 1 — OPENING:\n"
+#             "Pick the most specific or emotionally loaded thing they said. "
+#             "Ask one question that connects it to their personal experience — "
+#             "who they are, where they're from, or how close they feel to the situation described. "
+#             "Axes 1, 4, and 7 are natural starting points."
+#         )
+#     elif user_turns == 2:
+#         # Check if last answer was thin — if so, stay and probe deeper
+#         last_clean = last_user.strip()
+#         word_count_hint = len(last_clean.split())
+#         if word_count_hint <= 6:
+#             p += (
+#                 "TURN 2 — REPAIR:\n"
+#                 f"The participant's last answer was very short: \"{last_clean}\". "
+#                 "Do not pivot to a new topic. Instead, gently open up what they just said "
+#                 "by asking for a specific memory, moment, or example behind it. "
+#                 "Stay on the same axis — just go deeper."
+#             )
+#         else:
+#             p += (
+#                 "TURN 2 — BROADEN:\n"
+#                 "They've shared one dimension. Now open up a related but different angle "
+#                 "— not an abrupt topic switch, but a natural extension. "
+#                 "For example: if they talked about community, you might ask about "
+#                 "a time they personally felt inside or outside that community. "
+#                 "Choose the next axis based on what feels most alive in what they said."
+#             )
+#     elif user_turns == 3:
+#         last_clean = last_user.strip()
+#         word_count_hint = len(last_clean.split())
+#         if word_count_hint <= 6:
+#             p += (
+#                 "TURN 3 — REPAIR:\n"
+#                 f"The participant's last answer was very short: \"{last_clean}\". "
+#                 "Do not move on. Ask them to ground what they said in a specific moment "
+#                 "or lived example — something that actually happened to them or someone they know."
+#             )
+#         else:
+#             p += (
+#                 "TURN 3 — DEEPEN:\n"
+#                 f"They said: \"{last_clean[:200]}\". "
+#                 "Ask what made that personally significant — not just what happened, "
+#                 "but why it stayed with them, or what it revealed about how they see themselves "
+#                 "or their place in situations like the one in the scenario."
+#             )
+#     elif user_turns >= 4:
+#         p += (
+#             "TURN 4 — CLOSE:\n"
+#             "Ask one final, open question that invites them to reflect on how their identity, "
+#             "values, background, or beliefs — in whatever way feels right to them — "
+#             "shaped the way they read this scenario. Keep it gentle and open-ended."
+#         )
+
+#     if user_turns == 4:
+#         p += (
+#             "\n\nSTOPPING CONDITION: If across the conversation the participant has shared "
+#             "enough personal detail to support a coherent 4–5 sentence narrative, "
+#             "end your response with the exact text: READY_TO_BUILD"
+#         )
+#     elif user_turns >= 5:
+#         p += (
+#             "\n\nFINAL TURN — CRITICAL OVERRIDE: You have reached the absolute end of the interview. "
+#             "Do NOT ask any question. Thank the participant warmly in one sentence only. "
+#             "You MUST end your entire response with the exact text: READY_TO_BUILD"
+#         )
+
+#     return p
+
+AXES_CONTEXT = """\
+You are conducting a qualitative lived-experience elicitation as part of an academic study on annotation and positionality. \
+The participant has just read a scenario. Your job is to draw out their personal relationship to the themes in it — \
+not their opinions about the scenario, but their lived experience that shapes how they would read and interpret it.
+
+The seven lived-experience axes below are lenses. Work through them across the conversation. \
+Do NOT name them or list them — use them invisibly:
+
+  A. Sociocultural & geographic context — where they grew up, cultural norms, value systems
+  B. Linguistic background — native language, code-switching, dialect, how they navigate registers
+  C. Socioeconomic & labor — class, economic precarity, workplace power dynamics
+  D. Race & ethnicity — racial identity, marginalization, how others perceive them
+  E. Gender & sexuality — lived gender/sexuality, how systems categorize them
+  F. Disability & neurodivergence — physical, cognitive, sensory experience; what 'normal' excludes
+  G. Epistemic proximity — how personally close they are to the people most affected by this scenario
+
+CORE RULES — apply every single turn:
+- Ask exactly ONE question. If you feel the urge to ask two, cut the second one.
+- 1–2 sentences maximum. No affirmations ('great', 'thank you', 'I see'). No summaries of what they said.
+- Never paraphrase their answer back to them.
+- Anchor every question to something specific they actually said — never ask generically.
+- If their last answer was thin (fewer than ~15 words), do NOT pivot to a new axis. Stay with the same thread and ask for a concrete example or memory.
+- Move to a new axis only when you have substantive material on the current one.\
 """
 
-def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-    p = (
-        "You are a warm, curious qualitative research interviewer doing a lived-experience elicitation. "
-        "The participant just read this scenario:\n"
-        f"SCENARIO: \"{scenario['vignette']}\"\n\n"
-        f"{AXES_CONTEXT}\n\n"
-        "CORE RULES — follow these every turn:\n"
-        "- Ask exactly ONE question. Never two.\n"
-        "- 1–2 sentences maximum. No preamble, no summaries, no affirmations like 'great' or 'I see'.\n"
-        "- Never paraphrase what they just said back to them.\n"
-        "- If their answer was thin, vague, or a single word, do NOT pivot to a new axis. "
-        "  Stay with what they just raised and ask for a concrete moment or example from their life.\n"
-        "- Only move to a new axis when the participant has given a substantive answer on the current one.\n"
-        "- Ground every question in something specific they actually said — not generic.\n\n"
+def _axes_covered(elicitation: list) -> list[str]:
+    """Heuristically identify which axes have been touched based on conversation content."""
+    axes = {
+        "A": ["grew up", "country", "city", "culture", "community", "hometown", "background", "where"],
+        "B": ["language", "dialect", "english", "accent", "translate", "speak", "words"],
+        "C": ["work", "job", "money", "class", "afford", "wage", "labor", "income", "economic"],
+        "D": ["race", "racial", "ethnic", "skin", "minority", "discriminat", "immigrant", "foreign"],
+        "E": ["gender", "woman", "man", "trans", "queer", "gay", "sexual", "she", "he", "they"],
+        "F": ["disab", "chronic", "illness", "neurodiv", "adhd", "autism", "mental health", "pain"],
+        "G": ["know someone", "personally", "my family", "close to", "affect me", "my own", "i've experienced"]
+    }
+    user_text = " ".join(
+        m["content"].lower() for m in elicitation if m["role"] == "user"
     )
+    covered = []
+    for axis, keywords in axes.items():
+        if any(kw in user_text for kw in keywords):
+            covered.append(axis)
+    return covered
+
+
+def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "", elicitation: list = None) -> str:
+    if elicitation is None:
+        elicitation = []
+
+    covered = _axes_covered(elicitation)
+    uncovered = [a for a in ["A", "B", "C", "D", "E", "F", "G"] if a not in covered]
+    last_clean = last_user.strip()
+    is_thin = len(last_clean.split()) <= 12
+
+    # Build axis guidance for next question
+    axis_labels = {
+        "A": "sociocultural/geographic background",
+        "B": "linguistic background or code-switching",
+        "C": "class, labor, or economic experience",
+        "D": "race, ethnicity, or experiences of marginalization",
+        "E": "gender identity or sexuality",
+        "F": "disability, chronic illness, or neurodivergence",
+        "G": "how personally close they are to the people most affected"
+    }
+
+    p = f"{AXES_CONTEXT}\n\nSCENARIO the participant read:\n\"{scenario['vignette']}\"\n\n"
+    p += f"Axes covered so far (based on conversation): {', '.join(covered) if covered else 'none yet'}\n"
+    p += f"Axes not yet touched: {', '.join(uncovered) if uncovered else 'all covered'}\n\n"
 
     if user_turns == 1:
         p += (
             "TURN 1 — OPENING:\n"
-            "Pick the most specific or emotionally loaded thing they said. "
-            "Ask one question that connects it to their personal experience — "
-            "who they are, where they're from, or how close they feel to the situation described. "
-            "Axes 1, 4, and 7 are natural starting points."
-        )
-    elif user_turns == 2:
-        # Check if last answer was thin — if so, stay and probe deeper
-        last_clean = last_user.strip()
-        word_count_hint = len(last_clean.split())
-        if word_count_hint <= 6:
-            p += (
-                "TURN 2 — REPAIR:\n"
-                f"The participant's last answer was very short: \"{last_clean}\". "
-                "Do not pivot to a new topic. Instead, gently open up what they just said "
-                "by asking for a specific memory, moment, or example behind it. "
-                "Stay on the same axis — just go deeper."
-            )
-        else:
-            p += (
-                "TURN 2 — BROADEN:\n"
-                "They've shared one dimension. Now open up a related but different angle "
-                "— not an abrupt topic switch, but a natural extension. "
-                "For example: if they talked about community, you might ask about "
-                "a time they personally felt inside or outside that community. "
-                "Choose the next axis based on what feels most alive in what they said."
-            )
-    elif user_turns == 3:
-        last_clean = last_user.strip()
-        word_count_hint = len(last_clean.split())
-        if word_count_hint <= 6:
-            p += (
-                "TURN 3 — REPAIR:\n"
-                f"The participant's last answer was very short: \"{last_clean}\". "
-                "Do not move on. Ask them to ground what they said in a specific moment "
-                "or lived example — something that actually happened to them or someone they know."
-            )
-        else:
-            p += (
-                "TURN 3 — DEEPEN:\n"
-                f"They said: \"{last_clean[:200]}\". "
-                "Ask what made that personally significant — not just what happened, "
-                "but why it stayed with them, or what it revealed about how they see themselves "
-                "or their place in situations like the one in the scenario."
-            )
-    elif user_turns >= 4:
-        p += (
-            "TURN 4 — CLOSE:\n"
-            "Ask one final, open question that invites them to reflect on how their identity, "
-            "values, background, or beliefs — in whatever way feels right to them — "
-            "shaped the way they read this scenario. Keep it gentle and open-ended."
+            "The participant just gave their first response. Pick the single most specific or emotionally "
+            "loaded thing they said. Ask one question that connects it to their personal history — "
+            "where they're from, who they are, or how they relate to the people in the scenario. "
+            "Axis A, D, or G are natural starting points. Stay concrete and personal."
         )
 
-    if user_turns == 4:
+    elif is_thin:
         p += (
-            "\n\nSTOPPING CONDITION: If across the conversation the participant has shared "
-            "enough personal detail to support a coherent 4–5 sentence narrative, "
+            f"REPAIR TURN — the participant's last response was very short: \"{last_clean}\"\n"
+            "Do not move to a new axis. Ask them to ground what they said in a specific moment, "
+            "memory, or example from their own life. Stay on the same thread — just go one level deeper."
+        )
+
+    elif user_turns <= 3:
+        if uncovered:
+            next_axis = uncovered[0]
+            p += (
+                f"TURN {user_turns} — BROADEN:\n"
+                f"You have good material from the current thread. Now open a new dimension. "
+                f"The next untouched axis is {next_axis} ({axis_labels[next_axis]}). "
+                f"Find a natural bridge from what they just said: \"{last_clean[:200]}\" "
+                f"to ask about {axis_labels[next_axis]}. Don't announce the topic change — "
+                f"make the question feel like a natural follow from what they shared."
+            )
+        else:
+            p += (
+                f"TURN {user_turns} — DEEPEN:\n"
+                f"All major axes have been touched. Go deeper on the one that feels richest. "
+                f"Ask: what made that experience personally significant — not just what happened, "
+                f"but what it revealed about how they see themselves in situations like this one. "
+                f"Anchor to: \"{last_clean[:200]}\""
+            )
+
+    elif user_turns == 4:
+        p += (
+            "TURN 4 — INTEGRATION:\n"
+            "You are approaching the end. Ask one question that invites the participant to connect "
+            "the threads — how does their background, identity, or experience shape the lens "
+            "through which they would read content like this scenario? Keep it open and gentle. "
+            "Do NOT repeat a question type you've already asked.\n\n"
+            "STOPPING CONDITION: If the participant has shared enough across the conversation "
+            "to support a coherent 4–5 sentence narrative covering at least 3 axes, "
             "end your response with the exact text: READY_TO_BUILD"
         )
+
     elif user_turns >= 5:
         p += (
-            "\n\nFINAL TURN — CRITICAL OVERRIDE: You have reached the absolute end of the interview. "
-            "Do NOT ask any question. Thank the participant warmly in one sentence only. "
-            "You MUST end your entire response with the exact text: READY_TO_BUILD"
+            "FINAL TURN — CRITICAL OVERRIDE:\n"
+            "Do NOT ask any question. Thank the participant warmly in exactly one sentence. "
+            "You MUST end your response with the exact text: READY_TO_BUILD"
         )
 
     return p
@@ -523,7 +650,7 @@ def main():
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about **15–20 minutes**. You'll first share a bit about your own "
+            "This study takes about *35–40* minutes*. You'll first share a bit about your own "
             "perspective and experiences, then read and annotate a small set of social media posts. "
             "There are no right or wrong answers."
         )
