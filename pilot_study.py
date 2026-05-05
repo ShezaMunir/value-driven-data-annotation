@@ -207,10 +207,25 @@ SCENARIOS = [
 
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
+# def init_participant(name: str) -> dict:
+#     return {
+#         "name": name,
+#         "created_at": datetime.utcnow().isoformat(),
+#         "scenario_id": random.choice(SCENARIOS)["id"],
+#         "workflow_stage": "disclosure",
+#         "disclosure": {},
+#         "elicitation": [],
+#         "micronarrative": "",
+#         "annotations": [],
+#         "version": "A",
+#     }
+
 def init_participant(name: str) -> dict:
     return {
         "name": name,
         "created_at": datetime.utcnow().isoformat(),
+        "resumed_at": None,
+        "paused_at": None,
         "scenario_id": random.choice(SCENARIOS)["id"],
         "workflow_stage": "disclosure",
         "disclosure": {},
@@ -218,6 +233,7 @@ def init_participant(name: str) -> dict:
         "micronarrative": "",
         "annotations": [],
         "version": "A",
+        "pause_code": None,
     }
 
 def get_scenario(sid: str) -> dict:
@@ -244,83 +260,6 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
-# ─── Elicitation prompt builder ───────────────────────────────────────────────
-# Implements Willig (2013) turn structure + Rocchio (2022) domain-anchoring
-# + Smythe (2008) hermeneutic circle from turn 3 onward.
-# Hard 5-turn cap: wind-down at turn 4, mandatory READY_TO_BUILD at turn 5.
-
-# AXES_CONTEXT = """\
-# Use the following seven lived-experience axes as lenses to guide each question. \
-# Do not name the axes explicitly — let your question naturally open up that dimension of experience:
-
-# 1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems, urban/rural
-# 2. Linguistic Background & Dialect — native language, multilingualism, how they navigate registers
-# 3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power dynamics
-# 4. Race & Ethnicity — racial identity, historical marginalization, how they are perceived by others
-# 5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
-# 6. Disability & Neurodivergence — physical, cognitive, or sensory experience; what 'normal' excludes
-# 7. Epistemic Proximity — how close or distant they personally are from the people most affected\
-# """
-
-# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-#     p = (
-#         "You are an empathetic qualitative research interviewer conducting a lived-experience elicitation. "
-#         "The participant just read this scenario:\n"
-#         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
-#         f"{AXES_CONTEXT}\n\n"
-#         "STRICT RULES:\n"
-#         "- Ask exactly ONE question per turn. Never two questions in one response.\n"
-#         "- 1–2 sentences maximum. No preamble, no summaries.\n"
-#         "- Never paraphrase or reflect back what the participant just said.\n"
-#         "- Never use vague prompts like 'tell me more' or 'can you elaborate'.\n"
-#         "- Ground every question in something concrete the participant just said or implied.\n\n"
-#     )
-
-#     if user_turns == 1:
-#         p += (
-#             "TURN 1 — GROUNDING:\n"
-#             "Identify the most emotionally charged or specific thing they said. "
-#             "Ask a single question connecting that reaction to their relationship "
-#             "to the people, place, or tension in the scenario "
-#             "(axes 1, 4, or 7 are usually best here)."
-#         )
-#     elif user_turns == 2:
-#         p += (
-#             "TURN 2 — PIVOT:\n"
-#             "Move to a DIFFERENT axis from the list — one they haven't touched yet. "
-#             "A good pivot opens up a new dimension of their experience: for example, "
-#             "how their language background, class position, or gender shapes how they read this."
-#         )
-#     elif user_turns == 3:
-#         p += (
-#             "TURN 3 — DEEPENING:\n"
-#             "Ask for a concrete personal memory or lived example that explains "
-#             f"WHY they feel the way they described. Reference something specific they said: "
-#             f"\"{last_user[:180]}\". Push past opinion into experience."
-#         )
-#     elif user_turns >= 4:
-#         p += (
-#             "TURN 4 — CLOSING:\n"
-#             "Ask one final question inviting them to reflect on how their identity, background, "
-#             "values, or beliefs — broadly understood — shaped the way they read this scenario. "
-#             "This should feel like a natural, gentle closing of the conversation."
-#         )
-
-#     if user_turns == 4:
-#         p += (
-#             "\n\nSTOPPING CONDITION: If the participant has shared enough personal detail across "
-#             "the conversation to support a coherent 4–5 sentence narrative, "
-#             "end your response with the exact text: READY_TO_BUILD"
-#         )
-#     elif user_turns >= 5:
-#         p += (
-#             "\n\nCRITICAL OVERRIDE — TURN 5 IS THE ABSOLUTE FINAL TURN. "
-#             "You are forbidden from asking another question. "
-#             "Thank the participant warmly in one sentence. "
-#             "You MUST append the exact text: READY_TO_BUILD"
-#         )
-
-#     return p
 
 AXES_CONTEXT = """\
 The seven lived-experience axes below are lenses for your questions. \
@@ -504,6 +443,15 @@ def inject_styles():
     </style>
     """, unsafe_allow_html=True)
 
+def _elapsed_seconds(start_iso: str, end_iso: str) -> int:
+    try:
+        fmt = "%Y-%m-%dT%H:%M:%S.%f"
+        s = datetime.strptime(start_iso[:26], fmt)
+        e = datetime.strptime(end_iso[:26], fmt)
+        return max(0, int((e - s).total_seconds()))
+    except Exception:
+        return -1
+
 def prog(step, total):
     pct = int(step / total * 100)
     st.markdown(
@@ -583,7 +531,7 @@ def main():
         with st.expander("ℹ️ Participant information & consent — please read before starting", expanded=True):
             st.markdown(
                 """
-**Purpose:** This study examines whether personal experience shapes how people annotate data — posts where reasonable people disagree about whether harm is present. Your perspective, and the reasoning behind it, is the data.
+**Purpose:** This study examines whether personal experience shapes how people annotate data. Your perspective, and the reasoning behind it, is the data.
 
 **What you'll do:** Share your background, speak with an AI interviewer about your experiences, then annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
 
@@ -595,6 +543,27 @@ def main():
         consent = st.checkbox("I have read the above information and agree to participate.")
 
         name = st.text_input("Enter your first name or a pseudonym:")
+        st.markdown("---")
+        st.markdown("**Returning? Paste your pause code to resume.**")
+        resume_code = st.text_area("Pause code (optional):", height=80, key="resume_code_input")
+        if st.button("Resume →"):
+            if not resume_code.strip():
+                st.warning("Please paste your pause code.")
+            else:
+                try:
+                    import base64, json as _json
+                    payload = _json.loads(base64.b64decode(resume_code.strip()).decode())
+                    payload["resumed_at"] = datetime.utcnow().isoformat()
+                    payload["paused_at"] = None
+                    payload["pause_code"] = None
+                    st.session_state.participant_name = payload["name"]
+                    st.session_state.pdata = payload
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Could not read pause code: {e}. Please check and try again.")
+
+        st.markdown("---")
+
         if st.button("Begin →", type="primary"):
             if not consent:
                 st.warning("Please read and accept the participant information before continuing.")
@@ -613,6 +582,19 @@ def main():
     scenario = get_scenario(data["scenario_id"])
     stage = data["workflow_stage"]
 
+    # with st.sidebar:
+    #     st.markdown(f"**{data['name']}**")
+    #     st.markdown(f"*{scenario['theme']}*")
+    #     labels = {
+    #         "disclosure": "1 — Background",
+    #         "elicitation_chat": "2 — Your experience",
+    #         "synthesis": "3 — Your narrative",
+    #         "annotation": "4 — Annotations",
+    #         "complete": "✓ Done"
+    #     }
+    #     st.caption(labels.get(stage, stage))
+    #     st.markdown("---")
+    #     st.caption("Data is held in memory and saved securely at the end.")
     with st.sidebar:
         st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
@@ -624,6 +606,35 @@ def main():
             "complete": "✓ Done"
         }
         st.caption(labels.get(stage, stage))
+        st.markdown("---")
+
+        # ── PAUSE FEATURE ────────────────────────────────────────────────────
+        if stage not in ("complete",):
+            with st.expander("⏸ Save & pause"):
+                st.caption(
+                    "Generate a code to save your progress. "
+                    "Paste it when you return to pick up where you left off."
+                )
+                if st.button("Generate pause code"):
+                    import base64, json as _json
+                    payload = _json.dumps({
+                        "name": data["name"],
+                        "scenario_id": data["scenario_id"],
+                        "workflow_stage": data["workflow_stage"],
+                        "disclosure": data["disclosure"],
+                        "elicitation": data["elicitation"],
+                        "micronarrative": data["micronarrative"],
+                        "annotations": data["annotations"],
+                        "version": data["version"],
+                        "created_at": data["created_at"],
+                    })
+                    code = base64.b64encode(payload.encode()).decode()
+                    data["pause_code"] = code
+                    data["paused_at"] = datetime.utcnow().isoformat()
+                    st.session_state.pdata = data
+                    st.code(code, language=None)
+                    st.caption("Copy this code. It contains your full progress.")
+
         st.markdown("---")
         st.caption("Data is held in memory and saved securely at the end.")
 
@@ -780,6 +791,10 @@ def main():
 
         if idx < len(datapoints):
             dp = datapoints[idx]
+            # Record when this item was first shown
+            start_key = f"anno_start_{idx}"
+            if start_key not in st.session_state:
+                st.session_state[start_key] = datetime.utcnow().isoformat()
             st.components.v1.html(
                 "<script>window.parent.scrollTo({top: 0, behavior: 'instant'});</script>",
                 height=0,
@@ -905,6 +920,17 @@ def main():
                         for e in errors:
                             st.warning(e)
                     else:
+                        # data["annotations"].append({
+                        #     "datapoint_id": dp["id"],
+                        #     "domain": dp["domain"],
+                        #     "tweet_text": dp["text"],
+                        #     "participant_label": label,
+                        #     "participant_target": target,
+                        #     "rationale": rationale,
+                        #     "positionality_salience": salience,
+                        #     "timestamp": datetime.utcnow().isoformat(),
+                        # })
+                        annotation_end = datetime.utcnow().isoformat()
                         data["annotations"].append({
                             "datapoint_id": dp["id"],
                             "domain": dp["domain"],
@@ -913,7 +939,12 @@ def main():
                             "participant_target": target,
                             "rationale": rationale,
                             "positionality_salience": salience,
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp_start": st.session_state.get(f"anno_start_{idx}", annotation_end),
+                            "timestamp_end": annotation_end,
+                            "seconds_on_item": _elapsed_seconds(
+                                st.session_state.get(f"anno_start_{idx}", annotation_end),
+                                annotation_end
+                            ),
                         })
                         # Mid-session save after every annotation (#12 fix)
                         try:
