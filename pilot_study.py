@@ -49,6 +49,9 @@ from streamlit_gsheets import GSheetsConnection
 import time
 import pandas as pd
 import os
+from google.cloud import storage
+from google.oauth2 import service_account
+import uuid
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -59,7 +62,16 @@ except KeyError:
 
 client = InferenceClient(api_key=HF_TOKEN)
 
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
+# SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
+GCS_BUCKET = st.secrets["gcs_config"]["bucket_name"]
+
+@st.cache_resource
+def get_gcs_client():
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcs"],
+        scopes=["https://www.googleapis.com/auth/devstorage.read_write"]
+    )
+    return storage.Client(credentials=credentials)
 
 MIN_RATIONALE_WORDS = 50
 
@@ -220,9 +232,10 @@ SCENARIOS = [
 #         "version": "A",
 #     }
 
-def init_participant(name: str) -> dict:
+
+def init_participant() -> dict:
     return {
-        "name": name,
+        "participant_id": str(uuid.uuid4()),
         "created_at": datetime.utcnow().isoformat(),
         "resumed_at": None,
         "paused_at": None,
@@ -232,7 +245,6 @@ def init_participant(name: str) -> dict:
         "elicitation": [],
         "micronarrative": "",
         "annotations": [],
-        "version": "A",
         "pause_code": None,
     }
 
@@ -578,6 +590,74 @@ def _elapsed_seconds(start_iso: str, end_iso: str) -> int:
         return max(0, int((e - s).total_seconds()))
     except Exception:
         return -1
+    
+def save_progress_to_gcs(data: dict):
+    """
+    Overwrites a single in-progress file per participant on every annotation save.
+    Only one file exists at a time — the most recent state.
+    """
+    try:
+        gcs = get_gcs_client()
+        bucket = gcs.bucket(GCS_BUCKET)
+        pid = data["participant_id"]
+        blob = bucket.blob(f"sessions/{pid}/IN_PROGRESS.json")
+        payload = {
+            "participant_id": pid,
+            # "participant_name": data["name"],
+            "scenario_id": data["scenario_id"],
+            "connection_type": data["disclosure"].get("connection_type", ""),
+            "duration": data["disclosure"].get("duration", ""),
+            "disclosure_text": data["disclosure"].get("text", ""),
+            "micronarrative": data["micronarrative"],
+            "chat_log": data["elicitation"],
+            "annotations": data["annotations"],
+            "annotations_complete": len(data["annotations"]),
+            "status": f"in_progress_{len(data['annotations'])}",
+            "last_saved": datetime.utcnow().isoformat(),
+        }
+        blob.upload_from_string(
+            json.dumps(payload, ensure_ascii=False),
+            content_type="application/json"
+        )
+    except Exception:
+        pass  # Silent — never interrupt participant flow
+
+
+def save_complete_to_gcs(data: dict):
+    """
+    Writes the final complete record and deletes the in-progress file.
+    """
+    gcs = get_gcs_client()
+    bucket = gcs.bucket(GCS_BUCKET)
+    pid = data["participant_id"]
+
+    final = {
+        "participant_id": pid,
+        # "participant_name": data["name"],
+        "created_at": data["created_at"],
+        "resumed_at": data.get("resumed_at"),
+        "scenario_id": data["scenario_id"],
+        "connection_type": data["disclosure"].get("connection_type", ""),
+        "duration": data["disclosure"].get("duration", ""),
+        "disclosure_text": data["disclosure"].get("text", ""),
+        "micronarrative": data["micronarrative"],
+        "chat_log": data["elicitation"],
+        "annotations": data["annotations"],
+        "status": "complete",
+        "saved_at": datetime.utcnow().isoformat(),
+    }
+
+    # Write COMPLETE.json
+    bucket.blob(f"sessions/{pid}/COMPLETE.json").upload_from_string(
+        json.dumps(final, ensure_ascii=False),
+        content_type="application/json"
+    )
+
+    # Delete IN_PROGRESS.json so only the clean final file remains
+    try:
+        bucket.blob(f"sessions/{pid}/IN_PROGRESS.json").delete()
+    except Exception:
+        pass
 
 def prog(step, total):
     pct = int(step / total * 100)
@@ -637,20 +717,20 @@ def scroll_to_bottom():
 
 def main():
     st.set_page_config(
-        page_title="Hate Speech & Belonging — Pilot Study",
+        page_title="Hate Speech & Belonging — Annotation Study",
         layout="centered",
         page_icon="🗣"
     )
     inject_styles()
 
     # ── SIGN-IN + CONSENT ─────────────────────────────────────────────────────
-    if "participant_name" not in st.session_state:
-        st.markdown("<div class='step-label'>Pilot Study · Version A</div>", unsafe_allow_html=True)
+    if "pdata" not in st.session_state:
+        st.markdown("<div class='step-label'>Annotation Study</div>", unsafe_allow_html=True)
         st.title("Hate Speech & Belonging")
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about *35–40* minutes*. You'll first share a bit about your own "
+            "This study takes about 35–40 minutes*. You'll first share a bit about your own "
             "perspective and experiences, then read and annotate a small set of social media posts. "
             "There are no right or wrong answers."
         )
@@ -669,7 +749,7 @@ def main():
             )
         consent = st.checkbox("I have read the above information and agree to participate.")
 
-        name = st.text_input("Enter your first name or a pseudonym:")
+        # name = st.text_input("Enter your first name or a pseudonym:")
         st.markdown("---")
         st.markdown("**Returning? Paste your pause code to resume.**")
         resume_code = st.text_area("Pause code (optional):", height=80, key="resume_code_input")
@@ -683,7 +763,6 @@ def main():
                     payload["resumed_at"] = datetime.utcnow().isoformat()
                     payload["paused_at"] = None
                     payload["pause_code"] = None
-                    st.session_state.participant_name = payload["name"]
                     st.session_state.pdata = payload
                     st.rerun()
                 except Exception as e:
@@ -694,16 +773,13 @@ def main():
         if st.button("Begin →", type="primary"):
             if not consent:
                 st.warning("Please read and accept the participant information before continuing.")
-            elif not name.strip():
-                st.warning("Please enter a name or pseudonym.")
             else:
-                st.session_state.participant_name = name.strip()
-                st.session_state.pdata = init_participant(name.strip())
+                st.session_state.pdata = init_participant()
                 st.rerun()
         return
 
-    if "pdata" not in st.session_state:
-        st.session_state.pdata = init_participant(st.session_state.participant_name)
+    # if "pdata" not in st.session_state:
+    #     st.session_state.pdata = init_participant()
 
     data = st.session_state.pdata
     scenario = get_scenario(data["scenario_id"])
@@ -723,7 +799,7 @@ def main():
     #     st.markdown("---")
     #     st.caption("Data is held in memory and saved securely at the end.")
     with st.sidebar:
-        st.markdown(f"**{data['name']}**")
+        # st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
         labels = {
             "disclosure": "1 — Background",
@@ -745,14 +821,14 @@ def main():
                 if st.button("Generate pause code"):
                     import base64, json as _json
                     payload = _json.dumps({
-                        "name": data["name"],
+                        # "name": data["name"],
+                        "participant_id": data["participant_id"],
                         "scenario_id": data["scenario_id"],
                         "workflow_stage": data["workflow_stage"],
                         "disclosure": data["disclosure"],
                         "elicitation": data["elicitation"],
                         "micronarrative": data["micronarrative"],
                         "annotations": data["annotations"],
-                        "version": data["version"],
                         "created_at": data["created_at"],
                     })
                     code = base64.b64encode(payload.encode()).decode()
@@ -1074,79 +1150,94 @@ def main():
                             ),
                         })
                         # Mid-session save after every annotation (#12 fix)
-                        try:
-                            conn = st.connection("gsheets", type=GSheetsConnection)
-                            progress_row = {
-                                "Name": data["name"],
-                                "Timestamp": datetime.now().isoformat(),
-                                "Scenario": data["scenario_id"],
-                                "Connection_Type": data["disclosure"].get("connection_type", ""),
-                                "Duration": data["disclosure"].get("duration", ""),
-                                "Disclosure_Text": data["disclosure"].get("text", ""),
-                                "Micronarrative": data["micronarrative"],
-                                "Chat_Log": json.dumps(data["elicitation"]),
-                                "Annotations": json.dumps(data["annotations"]),
-                                "Status": f"in_progress_{len(data['annotations'])}_of_{len(datapoints)}",
-                            }
-                            existing = conn.read(spreadsheet=SHEET_URL, usecols=list(progress_row.keys()), ttl=0)
-                            updated = pd.concat([existing, pd.DataFrame([progress_row])], ignore_index=True)
-                            conn.update(spreadsheet=SHEET_URL, data=updated)
-                        except Exception:
-                            pass  # Silent — don't interrupt participant flow on mid-save failure
+                        # try:
+                        #     conn = st.connection("gsheets", type=GSheetsConnection)
+                        #     progress_row = {
+                        #         "Name": data["name"],
+                        #         "Timestamp": datetime.now().isoformat(),
+                        #         "Scenario": data["scenario_id"],
+                        #         "Connection_Type": data["disclosure"].get("connection_type", ""),
+                        #         "Duration": data["disclosure"].get("duration", ""),
+                        #         "Disclosure_Text": data["disclosure"].get("text", ""),
+                        #         "Micronarrative": data["micronarrative"],
+                        #         "Chat_Log": json.dumps(data["elicitation"]),
+                        #         "Annotations": json.dumps(data["annotations"]),
+                        #         "Status": f"in_progress_{len(data['annotations'])}_of_{len(datapoints)}",
+                        #     }
+                        #     existing = conn.read(spreadsheet=SHEET_URL, usecols=list(progress_row.keys()), ttl=0)
+                        #     updated = pd.concat([existing, pd.DataFrame([progress_row])], ignore_index=True)
+                        #     conn.update(spreadsheet=SHEET_URL, data=updated)
+                        # except Exception:
+                        #     pass  # Silent — don't interrupt participant flow on mid-save failure
+                        # Mid-session save — one file per annotation event, no overwrites
+                        save_progress_to_gcs(data)
                         st.rerun()
 
         else:
-            # All annotations done — final save to Google Sheets
             with st.spinner("Saving your responses securely…"):
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        conn = st.connection("gsheets", type=GSheetsConnection)
-                        new_row = {
-                            "Name": data["name"],
-                            "Timestamp": datetime.now().isoformat(),
-                            "Scenario": data["scenario_id"],
-                            "Connection_Type": data["disclosure"].get("connection_type", ""),
-                            "Duration": data["disclosure"].get("duration", ""),
-                            "Disclosure_Text": data["disclosure"].get("text", ""),
-                            "Micronarrative": data["micronarrative"],
-                            "Chat_Log": json.dumps(data["elicitation"]),
-                            "Annotations": json.dumps(data["annotations"]),
-                            "Status": "complete",
-                        }
-                        existing_data = conn.read(
-                            spreadsheet=SHEET_URL,
-                            usecols=list(new_row.keys()),
-                            ttl=0
-                        )
-                        updated_data = pd.concat(
-                            [existing_data, pd.DataFrame([new_row])],
-                            ignore_index=True
-                        )
-                        conn.update(spreadsheet=SHEET_URL, data=updated_data)
-                        data["workflow_stage"] = "complete"
-                        st.rerun()
-                        break
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            time.sleep(2)
-                        else:
-                            st.error(
-                                f"Failed to save after {max_retries} attempts. "
-                                "Please leave this window open and contact the researcher. "
-                                f"Error: {e}"
-                            )
+                try:
+                    save_complete_to_gcs(data)
+                    data["workflow_stage"] = "complete"
+                    st.session_state.pdata = data
+                    st.rerun()
+                except Exception as e:
+                    st.error(
+                        "Failed to save your responses. Please leave this window open "
+                        "and contact the researcher at sheza@cs.toronto.edu. "
+                        f"Error: {e}"
+                    )
+            
+            # All annotations done — final save to Google Sheets
+            # with st.spinner("Saving your responses securely…"):
+            #     max_retries = 3
+            #     for attempt in range(max_retries):
+            #         try:
+            #             conn = st.connection("gsheets", type=GSheetsConnection)
+            #             new_row = {
+            #                 "Name": data["name"],
+            #                 "Timestamp": datetime.now().isoformat(),
+            #                 "Scenario": data["scenario_id"],
+            #                 "Connection_Type": data["disclosure"].get("connection_type", ""),
+            #                 "Duration": data["disclosure"].get("duration", ""),
+            #                 "Disclosure_Text": data["disclosure"].get("text", ""),
+            #                 "Micronarrative": data["micronarrative"],
+            #                 "Chat_Log": json.dumps(data["elicitation"]),
+            #                 "Annotations": json.dumps(data["annotations"]),
+            #                 "Status": "complete",
+            #             }
+            #             existing_data = conn.read(
+            #                 spreadsheet=SHEET_URL,
+            #                 usecols=list(new_row.keys()),
+            #                 ttl=0
+            #             )
+            #             updated_data = pd.concat(
+            #                 [existing_data, pd.DataFrame([new_row])],
+            #                 ignore_index=True
+            #             )
+            #             conn.update(spreadsheet=SHEET_URL, data=updated_data)
+            #             data["workflow_stage"] = "complete"
+            #             st.rerun()
+            #             break
+            #         except Exception as e:
+            #             if attempt < max_retries - 1:
+            #                 time.sleep(2)
+            #             else:
+            #                 st.error(
+            #                     f"Failed to save after {max_retries} attempts. "
+            #                     "Please leave this window open and contact the researcher. "
+            #                     f"Error: {e}"
+            #                 )
 
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     elif stage == "complete":
         st.balloons()
         st.title("Thank you.")
         st.markdown(
-            f"Your annotations and narrative are saved, **{data['name']}**. "
+            "Your annotations and narrative are saved. "
             "The perspectives you bring — including your background and lived experience — "
             "are what makes this kind of research meaningful."
         )
-        st.caption("Pilot study by Sheza Munir · Data stored securely · You may close this window.")
+        st.caption("Data stored securely · You may close this window.")
 
 
 if __name__ == "__main__":
