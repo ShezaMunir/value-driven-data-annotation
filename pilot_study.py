@@ -673,8 +673,6 @@ def main():
 
 **Data & consent:** Responses are stored securely and used for academic research only. Your narrative and rationales may be quoted anonymously in publications. You may stop at any time — incomplete responses will not be used.
 
-**Contact:** sheza@cs.toronto.edu
-
 ⚠️ Please do not use AI tools (ChatGPT, Claude, etc.) to answer any questions in this study. We are studying your personal perspective — AI-generated responses undermine the research and may result in your submission being rejected.
                 """
             )
@@ -1078,7 +1076,7 @@ def main():
                 except Exception as e:
                     st.error(
                         "Failed to save your responses. Please leave this window open "
-                        "and contact the researcher at sheza@cs.toronto.edu. "
+                        "and contact the researcher."
                         f"Error: {e}"
                     )
             
