@@ -219,18 +219,7 @@ SCENARIOS = [
 
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
-# def init_participant(name: str) -> dict:
-#     return {
-#         "name": name,
-#         "created_at": datetime.utcnow().isoformat(),
-#         "scenario_id": random.choice(SCENARIOS)["id"],
-#         "workflow_stage": "disclosure",
-#         "disclosure": {},
-#         "elicitation": [],
-#         "micronarrative": "",
-#         "annotations": [],
-#         "version": "A",
-#     }
+
 
 
 def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
@@ -242,13 +231,15 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "created_at": datetime.utcnow().isoformat(),
         "resumed_at": None,
         "paused_at": None,
-        "scenario_id": random.choice(SCENARIOS)["id"],
+        # "scenario_id": random.choice(SCENARIOS)["id"],
+        "scenario_id": "A",
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],
         "micronarrative": "",
         "annotations": [],
         "pause_code": None,
+        "consented_at": datetime.utcnow().isoformat(),
     }
 
 def get_scenario(sid: str) -> dict:
@@ -585,6 +576,31 @@ def inject_styles():
     </style>
     """, unsafe_allow_html=True)
 
+def disable_paste():
+    st.components.v1.html(
+        """
+        <script>
+        (function() {
+            function blockPaste(e) {
+                const tag = e.target.tagName.toLowerCase();
+                const isEditable = e.target.isContentEditable;
+                if (tag === 'textarea' || tag === 'input' || isEditable) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+            // Run once on load, then re-run as Streamlit rerenders the DOM
+            function attach() {
+                window.parent.document.addEventListener('paste', blockPaste, true);
+            }
+            attach();
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
 def _elapsed_seconds(start_iso: str, end_iso: str) -> int:
     try:
         fmt = "%Y-%m-%dT%H:%M:%S.%f"
@@ -618,6 +634,9 @@ def save_progress_to_gcs(data: dict):
             "status": f"in_progress_{len(data['annotations'])}",
             "last_saved": datetime.utcnow().isoformat(),
             "prolific_pid": data.get("prolific_pid"),
+            "prolific_study_id": data.get("prolific_study_id"),
+            "prolific_session_id": data.get("prolific_session_id"),
+            "consented_at": data.get("consented_at"),
         }
         blob.upload_from_string(
             json.dumps(payload, ensure_ascii=False),
@@ -650,6 +669,9 @@ def save_complete_to_gcs(data: dict):
         "status": "complete",
         "saved_at": datetime.utcnow().isoformat(),
         "prolific_pid": data.get("prolific_pid"),
+        "prolific_study_id": data.get("prolific_study_id"),
+        "prolific_session_id": data.get("prolific_session_id"),
+        "consented_at": data.get("consented_at"),
     }
 
     # Write COMPLETE.json
@@ -727,6 +749,7 @@ def main():
         page_icon="🗣"
     )
     inject_styles()
+    # disable_paste()
 
     # ── SIGN-IN + CONSENT ─────────────────────────────────────────────────────
     if "pdata" not in st.session_state:
@@ -750,9 +773,12 @@ def main():
 **Data & consent:** Responses are stored securely and used for academic research only. Your narrative and rationales may be quoted anonymously in publications. You may stop at any time — incomplete responses will not be used.
 
 **Contact:** sheza@cs.toronto.edu
+
+⚠️ Please do not use AI tools (ChatGPT, Claude, etc.) to answer any questions in this study. We are studying your personal perspective — AI-generated responses undermine the research and may result in your submission being rejected.
                 """
             )
         consent = st.checkbox("I have read the above information and agree to participate.")
+        no_ai = st.checkbox("I confirm I will answer all questions myself, without AI tools or chatbots.")
 
         # name = st.text_input("Enter your first name or a pseudonym:")
         st.markdown("---")
@@ -776,8 +802,8 @@ def main():
         st.markdown("---")
 
         if st.button("Begin →", type="primary"):
-            if not consent:
-                st.warning("Please read and accept the participant information before continuing.")
+            if not consent or not no_ai:
+                st.warning("Please check both boxes before continuing.")
             else:
                 params = st.query_params
                 prolific_pid = params.get("PROLIFIC_PID", None)
