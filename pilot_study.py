@@ -789,9 +789,7 @@ def main():
                     session_id=session_id,
                 )
                 st.rerun()
-
-    # if "pdata" not in st.session_state:
-    #     st.session_state.pdata = init_participant()
+        return
 
     data = st.session_state.pdata
     scenario = get_scenario(data["scenario_id"])
