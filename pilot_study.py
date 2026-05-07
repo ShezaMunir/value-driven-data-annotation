@@ -1096,8 +1096,14 @@ def main():
             "The perspectives you bring — including your background and lived experience — "
             "are what makes this kind of research meaningful."
         )
-        prolific_pid = data.get("prolific_pid")
-        completion_url = st.secrets.get("PROLIFIC_COMPLETION_URL", None)
+        # prolific_pid = data.get("prolific_pid")
+        
+        try:
+            completion_url = st.secrets["PROLIFIC_COMPLETION_URL"]
+        except Exception:
+            completion_url = None
+
+
         if completion_url:
             st.markdown(
                 f"**Please click the button below to confirm your submission and receive payment.**"
