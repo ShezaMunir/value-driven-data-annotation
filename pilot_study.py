@@ -1078,6 +1078,16 @@ def main():
                     )
             
     # ── COMPLETE ──────────────────────────────────────────────────────────────
+    # elif stage == "complete":
+    #     st.balloons()
+    #     st.title("Thank you.")
+    #     st.markdown(
+    #         "Your annotations and narrative are saved. "
+    #         "The perspectives you bring — including your background and lived experience — "
+    #         "are what makes this kind of research meaningful."
+    #     )
+    #     st.caption("Data stored securely · You may close this window.")
+
     elif stage == "complete":
         st.balloons()
         st.title("Thank you.")
@@ -1086,7 +1096,18 @@ def main():
             "The perspectives you bring — including your background and lived experience — "
             "are what makes this kind of research meaningful."
         )
-        st.caption("Data stored securely · You may close this window.")
+        prolific_pid = data.get("prolific_pid")
+        completion_url = st.secrets.get("PROLIFIC_COMPLETION_URL", None)
+        if completion_url:
+            st.markdown(
+                f"**Please click the button below to confirm your submission and receive payment.**"
+            )
+            st.link_button("Complete submission →", completion_url)
+        else: 
+            st.markdown(
+                f"**There was a problem with your submission. Please contact researcher.**"
+            )
+        st.caption("Data stored securely.")
 
 
 if __name__ == "__main__":
