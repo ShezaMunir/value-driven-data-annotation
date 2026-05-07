@@ -267,105 +267,6 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
 
-# AXES_CONTEXT = """\
-# The seven lived-experience axes below are lenses for your questions. \
-# Do not name them or list them to the participant — use them invisibly to guide what you ask about:
-
-# 1. Sociocultural & Geographic Context — where they grew up, cultural norms, value systems
-# 2. Linguistic Background & Dialect — native language, multilingualism, code-switching
-# 3. Socioeconomic Status & Labor Dynamics — class, economic precarity, workplace power
-# 4. Race & Ethnicity — racial identity, marginalization, how others perceive them
-# 5. Gender Identity & Sexual Orientation — lived gender/sexuality, how systems categorize them
-# 6. Disability & Neurodivergence — physical, cognitive, or sensory experience
-# 7. Epistemic Proximity — how personally close they are to the people most affected\
-# """
-
-# def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "") -> str:
-#     p = (
-#         "You are a warm, curious qualitative research interviewer doing a lived-experience elicitation. "
-#         "The participant just read this scenario:\n"
-#         f"SCENARIO: \"{scenario['vignette']}\"\n\n"
-#         f"{AXES_CONTEXT}\n\n"
-#         "CORE RULES — follow these every turn:\n"
-#         "- Ask exactly ONE question. Never two.\n"
-#         "- 1–2 sentences maximum. No preamble, no summaries, no affirmations like 'great' or 'I see'.\n"
-#         "- Never paraphrase what they just said back to them.\n"
-#         "- If their answer was thin, vague, or a single word, do NOT pivot to a new axis. "
-#         "  Stay with what they just raised and ask for a concrete moment or example from their life.\n"
-#         "- Only move to a new axis when the participant has given a substantive answer on the current one.\n"
-#         "- Ground every question in something specific they actually said — not generic.\n\n"
-#     )
-
-#     if user_turns == 1:
-#         p += (
-#             "TURN 1 — OPENING:\n"
-#             "Pick the most specific or emotionally loaded thing they said. "
-#             "Ask one question that connects it to their personal experience — "
-#             "who they are, where they're from, or how close they feel to the situation described. "
-#             "Axes 1, 4, and 7 are natural starting points."
-#         )
-#     elif user_turns == 2:
-#         # Check if last answer was thin — if so, stay and probe deeper
-#         last_clean = last_user.strip()
-#         word_count_hint = len(last_clean.split())
-#         if word_count_hint <= 6:
-#             p += (
-#                 "TURN 2 — REPAIR:\n"
-#                 f"The participant's last answer was very short: \"{last_clean}\". "
-#                 "Do not pivot to a new topic. Instead, gently open up what they just said "
-#                 "by asking for a specific memory, moment, or example behind it. "
-#                 "Stay on the same axis — just go deeper."
-#             )
-#         else:
-#             p += (
-#                 "TURN 2 — BROADEN:\n"
-#                 "They've shared one dimension. Now open up a related but different angle "
-#                 "— not an abrupt topic switch, but a natural extension. "
-#                 "For example: if they talked about community, you might ask about "
-#                 "a time they personally felt inside or outside that community. "
-#                 "Choose the next axis based on what feels most alive in what they said."
-#             )
-#     elif user_turns == 3:
-#         last_clean = last_user.strip()
-#         word_count_hint = len(last_clean.split())
-#         if word_count_hint <= 6:
-#             p += (
-#                 "TURN 3 — REPAIR:\n"
-#                 f"The participant's last answer was very short: \"{last_clean}\". "
-#                 "Do not move on. Ask them to ground what they said in a specific moment "
-#                 "or lived example — something that actually happened to them or someone they know."
-#             )
-#         else:
-#             p += (
-#                 "TURN 3 — DEEPEN:\n"
-#                 f"They said: \"{last_clean[:200]}\". "
-#                 "Ask what made that personally significant — not just what happened, "
-#                 "but why it stayed with them, or what it revealed about how they see themselves "
-#                 "or their place in situations like the one in the scenario."
-#             )
-#     elif user_turns >= 4:
-#         p += (
-#             "TURN 4 — CLOSE:\n"
-#             "Ask one final, open question that invites them to reflect on how their identity, "
-#             "values, background, or beliefs — in whatever way feels right to them — "
-#             "shaped the way they read this scenario. Keep it gentle and open-ended."
-#         )
-
-#     if user_turns == 4:
-#         p += (
-#             "\n\nSTOPPING CONDITION: If across the conversation the participant has shared "
-#             "enough personal detail to support a coherent 4–5 sentence narrative, "
-#             "end your response with the exact text: READY_TO_BUILD"
-#         )
-#     elif user_turns >= 5:
-#         p += (
-#             "\n\nFINAL TURN — CRITICAL OVERRIDE: You have reached the absolute end of the interview. "
-#             "Do NOT ask any question. Thank the participant warmly in one sentence only. "
-#             "You MUST end your entire response with the exact text: READY_TO_BUILD"
-#         )
-
-#     return p
-
 AXES_CONTEXT = """\
 You are conducting a qualitative lived-experience elicitation as part of an academic study on annotation and positionality. \
 The participant has just read a scenario. Your job is to draw out their personal relationship to the themes in it — \
@@ -821,19 +722,7 @@ def main():
     scenario = get_scenario(data["scenario_id"])
     stage = data["workflow_stage"]
 
-    # with st.sidebar:
-    #     st.markdown(f"**{data['name']}**")
-    #     st.markdown(f"*{scenario['theme']}*")
-    #     labels = {
-    #         "disclosure": "1 — Background",
-    #         "elicitation_chat": "2 — Your experience",
-    #         "synthesis": "3 — Your narrative",
-    #         "annotation": "4 — Annotations",
-    #         "complete": "✓ Done"
-    #     }
-    #     st.caption(labels.get(stage, stage))
-    #     st.markdown("---")
-    #     st.caption("Data is held in memory and saved securely at the end.")
+
     with st.sidebar:
         # st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
@@ -1159,16 +1048,7 @@ def main():
                         for e in errors:
                             st.warning(e)
                     else:
-                        # data["annotations"].append({
-                        #     "datapoint_id": dp["id"],
-                        #     "domain": dp["domain"],
-                        #     "tweet_text": dp["text"],
-                        #     "participant_label": label,
-                        #     "participant_target": target,
-                        #     "rationale": rationale,
-                        #     "positionality_salience": salience,
-                        #     "timestamp": datetime.utcnow().isoformat(),
-                        # })
+    
                         annotation_end = datetime.utcnow().isoformat()
                         data["annotations"].append({
                             "datapoint_id": dp["id"],
@@ -1185,27 +1065,6 @@ def main():
                                 annotation_end
                             ),
                         })
-                        # Mid-session save after every annotation (#12 fix)
-                        # try:
-                        #     conn = st.connection("gsheets", type=GSheetsConnection)
-                        #     progress_row = {
-                        #         "Name": data["name"],
-                        #         "Timestamp": datetime.now().isoformat(),
-                        #         "Scenario": data["scenario_id"],
-                        #         "Connection_Type": data["disclosure"].get("connection_type", ""),
-                        #         "Duration": data["disclosure"].get("duration", ""),
-                        #         "Disclosure_Text": data["disclosure"].get("text", ""),
-                        #         "Micronarrative": data["micronarrative"],
-                        #         "Chat_Log": json.dumps(data["elicitation"]),
-                        #         "Annotations": json.dumps(data["annotations"]),
-                        #         "Status": f"in_progress_{len(data['annotations'])}_of_{len(datapoints)}",
-                        #     }
-                        #     existing = conn.read(spreadsheet=SHEET_URL, usecols=list(progress_row.keys()), ttl=0)
-                        #     updated = pd.concat([existing, pd.DataFrame([progress_row])], ignore_index=True)
-                        #     conn.update(spreadsheet=SHEET_URL, data=updated)
-                        # except Exception:
-                        #     pass  # Silent — don't interrupt participant flow on mid-save failure
-                        # Mid-session save — one file per annotation event, no overwrites
                         save_progress_to_gcs(data)
                         st.rerun()
 
@@ -1223,47 +1082,6 @@ def main():
                         f"Error: {e}"
                     )
             
-            # All annotations done — final save to Google Sheets
-            # with st.spinner("Saving your responses securely…"):
-            #     max_retries = 3
-            #     for attempt in range(max_retries):
-            #         try:
-            #             conn = st.connection("gsheets", type=GSheetsConnection)
-            #             new_row = {
-            #                 "Name": data["name"],
-            #                 "Timestamp": datetime.now().isoformat(),
-            #                 "Scenario": data["scenario_id"],
-            #                 "Connection_Type": data["disclosure"].get("connection_type", ""),
-            #                 "Duration": data["disclosure"].get("duration", ""),
-            #                 "Disclosure_Text": data["disclosure"].get("text", ""),
-            #                 "Micronarrative": data["micronarrative"],
-            #                 "Chat_Log": json.dumps(data["elicitation"]),
-            #                 "Annotations": json.dumps(data["annotations"]),
-            #                 "Status": "complete",
-            #             }
-            #             existing_data = conn.read(
-            #                 spreadsheet=SHEET_URL,
-            #                 usecols=list(new_row.keys()),
-            #                 ttl=0
-            #             )
-            #             updated_data = pd.concat(
-            #                 [existing_data, pd.DataFrame([new_row])],
-            #                 ignore_index=True
-            #             )
-            #             conn.update(spreadsheet=SHEET_URL, data=updated_data)
-            #             data["workflow_stage"] = "complete"
-            #             st.rerun()
-            #             break
-            #         except Exception as e:
-            #             if attempt < max_retries - 1:
-            #                 time.sleep(2)
-            #             else:
-            #                 st.error(
-            #                     f"Failed to save after {max_retries} attempts. "
-            #                     "Please leave this window open and contact the researcher. "
-            #                     f"Error: {e}"
-            #                 )
-
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     elif stage == "complete":
         st.balloons()
