@@ -1,5 +1,5 @@
 """
-pilot_study.py — Ambiguous Hate Speech Positionality Pilot Study (Version A: Elicitation → Annotation)
+pilot_study.py — Ambiguous Hate Speech Positionality Annotation Study
 Researcher: Sheza Munir
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -45,9 +45,9 @@ import json
 import random
 from datetime import datetime
 from huggingface_hub import InferenceClient
-from streamlit_gsheets import GSheetsConnection
+# from streamlit_gsheets import GSheetsConnection
 import time
-import pandas as pd
+# import pandas as pd
 import os
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -233,9 +233,12 @@ SCENARIOS = [
 #     }
 
 
-def init_participant() -> dict:
+def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
     return {
         "participant_id": str(uuid.uuid4()),
+        "prolific_pid": prolific_pid,
+        "prolific_study_id": study_id,
+        "prolific_session_id": session_id,
         "created_at": datetime.utcnow().isoformat(),
         "resumed_at": None,
         "paused_at": None,
@@ -614,6 +617,7 @@ def save_progress_to_gcs(data: dict):
             "annotations_complete": len(data["annotations"]),
             "status": f"in_progress_{len(data['annotations'])}",
             "last_saved": datetime.utcnow().isoformat(),
+            "prolific_pid": data.get("prolific_pid"),
         }
         blob.upload_from_string(
             json.dumps(payload, ensure_ascii=False),
@@ -645,6 +649,7 @@ def save_complete_to_gcs(data: dict):
         "annotations": data["annotations"],
         "status": "complete",
         "saved_at": datetime.utcnow().isoformat(),
+        "prolific_pid": data.get("prolific_pid"),
     }
 
     # Write COMPLETE.json
@@ -730,7 +735,7 @@ def main():
         st.markdown("*A positionality-aware annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about 35–40 minutes*. You'll first share a bit about your own "
+            "This study takes about 35–40 minutes. You'll first share a bit about your own "
             "perspective and experiences, then read and annotate a small set of social media posts. "
             "There are no right or wrong answers."
         )
@@ -774,9 +779,16 @@ def main():
             if not consent:
                 st.warning("Please read and accept the participant information before continuing.")
             else:
-                st.session_state.pdata = init_participant()
+                params = st.query_params
+                prolific_pid = params.get("PROLIFIC_PID", None)
+                study_id = params.get("STUDY_ID", None)
+                session_id = params.get("SESSION_ID", None)
+                st.session_state.pdata = init_participant(
+                    prolific_pid=prolific_pid,
+                    study_id=study_id,
+                    session_id=session_id,
+                )
                 st.rerun()
-        return
 
     # if "pdata" not in st.session_state:
     #     st.session_state.pdata = init_participant()
