@@ -729,7 +729,7 @@ def main():
             "complete": "✓ Done"
         }
         st.caption(labels.get(stage, stage))
-        st.markdown("---")
+        # st.markdown("---")
 
         # ── PAUSE FEATURE ────────────────────────────────────────────────────
         # if stage not in ("complete",):
@@ -758,7 +758,7 @@ def main():
         #             st.code(code, language=None)
         #             st.caption("Copy this code. It contains your full progress.")
 
-        st.markdown("---")
+        # st.markdown("---")
         st.caption("Data is held in memory and saved securely at the end.")
 
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
@@ -785,7 +785,7 @@ def main():
             "How long has this been part of your life or work? (e.g., 'my whole life', '3 years')"
         )
         disclosure = st.text_area(
-            "Briefly describe how this topic relates to your life. *(optional)*",
+            "Briefly describe how this topic relates to your life.",
             height=100,
         )
 
@@ -808,7 +808,7 @@ def main():
         # Instruction BEFORE the passage
         st.write(
             "Read the passage below, then respond to the interviewer's questions in the chat. "
-            "There are no right answers — we're interested in your genuine reactions and "
+            "There are no right/wrong answers — we're interested in your genuine reactions and "
             "personal experiences. Aim for 2–3 sentences per reply."
         )
         st.markdown(f"<div class='vignette-card'>{scenario['vignette']}</div>", unsafe_allow_html=True)
