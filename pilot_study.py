@@ -45,9 +45,6 @@ import json
 import random
 from datetime import datetime
 from huggingface_hub import InferenceClient
-# from streamlit_gsheets import GSheetsConnection
-import time
-# import pandas as pd
 import os
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -229,16 +226,16 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "prolific_study_id": study_id,
         "prolific_session_id": session_id,
         "created_at": datetime.utcnow().isoformat(),
-        "resumed_at": None,
-        "paused_at": None,
-        # "scenario_id": random.choice(SCENARIOS)["id"],
+        # "resumed_at": None,
+        # "paused_at": None,
+        # "scenario_id": random.choice(SCENARIOS)["id"], # uncomment this for main study
         "scenario_id": "A",
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],
         "micronarrative": "",
         "annotations": [],
-        "pause_code": None,
+        # "pause_code": None,
         "consented_at": datetime.utcnow().isoformat(),
     }
 
@@ -559,7 +556,7 @@ def save_complete_to_gcs(data: dict):
         "participant_id": pid,
         # "participant_name": data["name"],
         "created_at": data["created_at"],
-        "resumed_at": data.get("resumed_at"),
+        # "resumed_at": data.get("resumed_at"),
         "scenario_id": data["scenario_id"],
         "connection_type": data["disclosure"].get("connection_type", ""),
         "duration": data["disclosure"].get("duration", ""),
@@ -681,24 +678,24 @@ def main():
 
         # name = st.text_input("Enter your first name or a pseudonym:")
         st.markdown("---")
-        st.markdown("**Returning? Paste your pause code to resume.**")
-        resume_code = st.text_area("Pause code (optional):", height=80, key="resume_code_input")
-        if st.button("Resume →"):
-            if not resume_code.strip():
-                st.warning("Please paste your pause code.")
-            else:
-                try:
-                    import base64, json as _json
-                    payload = _json.loads(base64.b64decode(resume_code.strip()).decode())
-                    payload["resumed_at"] = datetime.utcnow().isoformat()
-                    payload["paused_at"] = None
-                    payload["pause_code"] = None
-                    st.session_state.pdata = payload
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Could not read pause code: {e}. Please check and try again.")
+        # st.markdown("**Returning? Paste your pause code to resume.**")
+        # resume_code = st.text_area("Pause code (optional):", height=80, key="resume_code_input")
+        # if st.button("Resume →"):
+        #     if not resume_code.strip():
+        #         st.warning("Please paste your pause code.")
+        #     else:
+        #         try:
+        #             import base64, json as _json
+        #             payload = _json.loads(base64.b64decode(resume_code.strip()).decode())
+        #             payload["resumed_at"] = datetime.utcnow().isoformat()
+        #             payload["paused_at"] = None
+        #             payload["pause_code"] = None
+        #             st.session_state.pdata = payload
+        #             st.rerun()
+        #         except Exception as e:
+        #             st.error(f"Could not read pause code: {e}. Please check and try again.")
 
-        st.markdown("---")
+        # st.markdown("---")
 
         if st.button("Begin →", type="primary"):
             if not consent or not no_ai:
@@ -735,31 +732,31 @@ def main():
         st.markdown("---")
 
         # ── PAUSE FEATURE ────────────────────────────────────────────────────
-        if stage not in ("complete",):
-            with st.expander("⏸ Save & pause"):
-                st.caption(
-                    "Generate a code to save your progress. "
-                    "Paste it when you return to pick up where you left off."
-                )
-                if st.button("Generate pause code"):
-                    import base64, json as _json
-                    payload = _json.dumps({
-                        # "name": data["name"],
-                        "participant_id": data["participant_id"],
-                        "scenario_id": data["scenario_id"],
-                        "workflow_stage": data["workflow_stage"],
-                        "disclosure": data["disclosure"],
-                        "elicitation": data["elicitation"],
-                        "micronarrative": data["micronarrative"],
-                        "annotations": data["annotations"],
-                        "created_at": data["created_at"],
-                    })
-                    code = base64.b64encode(payload.encode()).decode()
-                    data["pause_code"] = code
-                    data["paused_at"] = datetime.utcnow().isoformat()
-                    st.session_state.pdata = data
-                    st.code(code, language=None)
-                    st.caption("Copy this code. It contains your full progress.")
+        # if stage not in ("complete",):
+        #     with st.expander("⏸ Save & pause"):
+        #         st.caption(
+        #             "Generate a code to save your progress. "
+        #             "Paste it when you return to pick up where you left off."
+        #         )
+        #         if st.button("Generate pause code"):
+        #             import base64, json as _json
+        #             payload = _json.dumps({
+        #                 # "name": data["name"],
+        #                 "participant_id": data["participant_id"],
+        #                 "scenario_id": data["scenario_id"],
+        #                 "workflow_stage": data["workflow_stage"],
+        #                 "disclosure": data["disclosure"],
+        #                 "elicitation": data["elicitation"],
+        #                 "micronarrative": data["micronarrative"],
+        #                 "annotations": data["annotations"],
+        #                 "created_at": data["created_at"],
+        #             })
+        #             code = base64.b64encode(payload.encode()).decode()
+        #             data["pause_code"] = code
+        #             data["paused_at"] = datetime.utcnow().isoformat()
+        #             st.session_state.pdata = data
+        #             st.code(code, language=None)
+        #             st.caption("Copy this code. It contains your full progress.")
 
         st.markdown("---")
         st.caption("Data is held in memory and saved securely at the end.")
