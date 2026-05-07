@@ -192,7 +192,7 @@ SCENARIOS = [
         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
         "datapoint_ids": ["B01","B02","B03","B04","B05","B06","B07","B08","B09","B10"],
         "opening_q": (
-            "Reading through that passage — what feels most alive to you in it? "
+            "Reading through that passage — what stands out to you first? "
             "Is there something that resonates personally, or something that feels uncomfortable or foreign?"
         ),
     },
@@ -211,7 +211,7 @@ SCENARIOS = [
         "elicitation_focus": "identity, fairness, visibility, belonging, or feeling counted",
         "datapoint_ids": ["C01","C02","C03","C04","C05","C06","C07","C08","C09","C10"],
         "opening_q": (
-            "Reading through that passage — what's the first thing that strikes you? "
+            "Reading through that passage — what stands out to you first? "
             "Is there a moment, a feeling, or a person in it you find yourself drawn to?"
         ),
     },
@@ -947,7 +947,7 @@ def main():
                 data["elicitation"].append({"role": "user", "content": user_input})
                 # Fix #1: recount AFTER appending so turn number is accurate
                 current_turn = sum(1 for m in data["elicitation"] if m["role"] == "user")
-                sys_p = elicitation_sys(scenario, current_turn, user_input)
+                sys_p = elicitation_sys(scenario, current_turn, user_input, data["elicitation"])
                 response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
 
                 if "READY_TO_BUILD" in response:
