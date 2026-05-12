@@ -670,7 +670,7 @@ def main():
         st.markdown("---")
         st.markdown(
             "This study takes about 35–40 minutes. You'll first share a bit about your own "
-            "perspective and experiences, then read and annotate a small set of social media posts. "
+            "perspective and experiences, then read and annotate a small set of social media posts, and reflect. "
             "There are no right or wrong answers."
         )
 
