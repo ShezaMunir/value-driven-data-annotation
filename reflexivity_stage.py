@@ -45,7 +45,7 @@ def load_other_completed_sessions(bucket, current_prolific: str, scenario_id: st
 def build_disagreement_cards(
     my_annotations: list[dict],
     all_other_annotations: list[dict],
-    max_posts: int = 5,
+    max_posts: int = 3,
     max_others_per_post: int = 3,
 ) -> list[dict]:
     """
@@ -122,7 +122,7 @@ def render_reflexivity_stage(data: dict, GCS_BUCKET: str, get_gcs_client,
                 save_complete_to_gcs, render_word_counter, prog,
             )
     """
-    MIN_WORDS = 100
+    MIN_WORDS = 80
 
     st.markdown("<div class='step-label'>Step 5 of 5 — Reflection</div>", unsafe_allow_html=True)
     st.title("Your perspective, in context")

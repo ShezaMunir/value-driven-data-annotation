@@ -2,13 +2,16 @@
 pilot_study.py — Ambiguous Hate Speech Positionality Annotation Study
 Researcher: Sheza Munir
 
+to test: 
+https://value-driven-data-annotation-v2.streamlit.app/?PROLIFIC_PID=test123&STUDY_ID=study456&SESSION_ID=session789
+
 ═══════════════════════════════════════════════════════════════════════════════
 THEORETICAL GROUNDING (not shown to participants)
 ═══════════════════════════════════════════════════════════════════════════════
 
 ORDERING — Elicitation FIRST, annotation SECOND.
   Smythe et al. (2008) "Methodological Considerations for Interpretive Phenomenological
-  Inquiry" — narrative/reflective mindset before evaluation tasks enriches rationale depth.
+  Inquiry" — narrative/reflective mindset befor`e evaluation tasks enriches rationale depth.
   Annotation-first activates cold "judge mode" that suppresses lived-experience disclosure.
 
 ELICITATION DESIGN
