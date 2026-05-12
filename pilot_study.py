@@ -49,6 +49,7 @@ import os
 from google.cloud import storage
 from google.oauth2 import service_account
 import uuid
+from reflexivity_stage import render_reflexivity_stage
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -237,6 +238,8 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "annotations": [],
         # "pause_code": None,
         "consented_at": datetime.utcnow().isoformat(),
+        "reflexivity_response":     "",
+        "reflexivity_cards_shown":  [],
     }
 
 def get_scenario(sid: str) -> dict:
@@ -517,7 +520,9 @@ def save_progress_to_gcs(data: dict):
         gcs = get_gcs_client()
         bucket = gcs.bucket(GCS_BUCKET)
         pid = data["participant_id"]
-        blob = bucket.blob(f"sessions/{pid}/IN_PROGRESS.json")
+        prolific = data.get("prolific_pid") or pid
+        blob = bucket.blob(f"sessions/{prolific}/IN_PROGRESS.json")
+        # blob = bucket.blob(f"sessions/{pid}/IN_PROGRESS.json")
         payload = {
             "participant_id": pid,
             # "participant_name": data["name"],
@@ -570,17 +575,22 @@ def save_complete_to_gcs(data: dict):
         "prolific_study_id": data.get("prolific_study_id"),
         "prolific_session_id": data.get("prolific_session_id"),
         "consented_at": data.get("consented_at"),
+        "reflexivity_response":     data.get("reflexivity_response", ""),
+        "reflexivity_cards_shown":  data.get("reflexivity_cards_shown", []),
     }
 
     # Write COMPLETE.json
-    bucket.blob(f"sessions/{pid}/COMPLETE.json").upload_from_string(
+    # bucket.blob(f"sessions/{pid}/COMPLETE.json").upload_from_string(
+    prolific = data.get("prolific_pid") or pid
+    bucket.blob(f"sessions/{prolific}/COMPLETE.json").upload_from_string(
         json.dumps(final, ensure_ascii=False),
         content_type="application/json"
     )
 
     # Delete IN_PROGRESS.json so only the clean final file remains
     try:
-        bucket.blob(f"sessions/{pid}/IN_PROGRESS.json").delete()
+        # bucket.blob(f"sessions/{pid}/IN_PROGRESS.json").delete()
+        bucket.blob(f"sessions/{prolific}/IN_PROGRESS.json").delete()
     except Exception:
         pass
 
@@ -726,6 +736,7 @@ def main():
             "elicitation_chat": "2 — Your experience",
             "synthesis": "3 — Your narrative",
             "annotation": "4 — Annotations",
+            "reflexivity": "5 — Reflect",
             "complete": "✓ Done"
         }
         st.caption(labels.get(stage, stage))
@@ -1064,18 +1075,22 @@ def main():
                         st.rerun()
 
         else:
-            with st.spinner("Saving your responses securely…"):
-                try:
-                    save_complete_to_gcs(data)
-                    data["workflow_stage"] = "complete"
-                    st.session_state.pdata = data
-                    st.rerun()
-                except Exception as e:
-                    st.error(
-                        "Failed to save your responses. Please leave this window open "
-                        "and contact the researcher."
-                        f"Error: {e}"
-                    )
+            # All annotations done — advance to reflexivity stage
+            data["workflow_stage"] = "reflexivity"
+            st.session_state.pdata = data
+            st.rerun()
+            # with st.spinner("Saving your responses securely…"):
+            #     try:
+            #         save_complete_to_gcs(data)
+            #         data["workflow_stage"] = "complete"
+            #         st.session_state.pdata = data
+            #         st.rerun()
+            #     except Exception as e:
+            #         st.error(
+            #             "Failed to save your responses. Please leave this window open "
+            #             "and contact the researcher."
+            #             f"Error: {e}"
+            #         )
             
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     # elif stage == "complete":
@@ -1087,6 +1102,12 @@ def main():
     #         "are what makes this kind of research meaningful."
     #     )
     #     st.caption("Data stored securely · You may close this window.")
+
+    elif stage == "reflexivity":
+        render_reflexivity_stage(
+                data, GCS_BUCKET, get_gcs_client,
+                save_complete_to_gcs, render_word_counter, prog,
+            )
 
     elif stage == "complete":
         st.balloons()

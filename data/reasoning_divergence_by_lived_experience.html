@@ -1,0 +1,405 @@
+
+<h2 class="sr-only">Interactive analysis of how four Prolific participants' lived experiences shaped their hate speech annotation reasoning across 10 items</h2>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-size:14px}
+.top{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:flex-start}
+.p-card{border:1.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;cursor:pointer;flex:1;min-width:140px;transition:border-color .15s,background .15s}
+.p-card.active{border-color:#378ADD;background:var(--color-background-info)}
+.p-card:hover:not(.active){border-color:var(--color-border-secondary);background:var(--color-background-secondary)}
+.p-name{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.p-meta{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.ep-pill{display:inline-block;font-size:10px;padding:1px 7px;border-radius:999px;margin-bottom:5px}
+.ep-imm{background:#E6F1FB;color:#185FA5}
+.ep-non{background:#EAF3DE;color:#3B6D11}
+.section-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.75rem}
+.item-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:1.25rem}
+.item-btn{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 8px;cursor:pointer;background:var(--color-background-secondary);font-size:12px;font-weight:500;color:var(--color-text-secondary);text-align:center;transition:all .15s}
+.item-btn:hover{background:var(--color-background-primary);border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+.item-btn.active{border-color:#378ADD;background:#E6F1FB;color:#185FA5}
+.item-btn .score-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle}
+.panel{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;background:var(--color-background-primary)}
+.post-text{font-size:14px;font-style:italic;color:var(--color-text-primary);line-height:1.65;margin-bottom:1rem;padding-bottom:1rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+.label-badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:999px;margin-bottom:.5rem;font-weight:500}
+.l0{background:#EAF3DE;color:#3B6D11}.l1{background:#E1F5EE;color:#0F6E56}.l2{background:#FAEEDA;color:#854F0B}.l3{background:#FAECE7;color:#993C1D}.l4{background:#FCEBEB;color:#A32D2D}
+.rationale-block{margin-bottom:.75rem}
+.rationale-text{font-size:13px;color:var(--color-text-primary);line-height:1.7}
+.move-tag{display:inline;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:3px;font-size:10px;padding:1px 5px;color:var(--color-text-secondary);margin-left:4px;vertical-align:middle;white-space:nowrap}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
+.cmp-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;background:var(--color-background-secondary)}
+.cmp-header{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px}
+.cmp-text{font-size:12px;color:var(--color-text-primary);line-height:1.6}
+.insight-bar{background:var(--color-background-secondary);border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;padding:10px 14px;margin-top:1rem;font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+.insight-bar span{color:var(--color-text-primary);font-weight:500}
+.tabs{display:flex;gap:0;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1rem}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--color-text-secondary);font-family:var(--font-sans)}
+.tab-btn.active{border-bottom:2px solid #378ADD;color:var(--color-text-primary);font-weight:500}
+.tab-btn:hover:not(.active){color:var(--color-text-primary)}
+.move-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem}
+.ml-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-secondary)}
+.ml-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.all-grid{display:grid;gap:6px}
+.all-row{display:grid;grid-template-columns:60px 1fr 1fr 1fr 1fr;gap:6px;align-items:start}
+.all-item-id{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding-top:4px}
+.all-cell{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 8px;background:var(--color-background-secondary);font-size:11px;color:var(--color-text-primary);line-height:1.5;min-height:44px}
+.all-cell-header{font-size:10px;font-weight:500;color:var(--color-text-secondary);text-align:center;padding:4px}
+</style>
+
+<div class="wrap">
+
+<div class="top" id="pCards"></div>
+
+<div id="mainContent"></div>
+
+</div>
+
+<script>
+const PARTICIPANTS = [
+  { pid:"69f095b706facc9cd1f2c5b7", short:"P3", ep:"Immigrant", ethnicity:"Black · Nigerian",
+    country:"Nigeria → Canada", connection:"Direct experience", age:28, sex:"Female",
+    disclosure:"International student in Canada, 5 years. Experienced housing pressure and being seen as the problem.",
+    moves:["Experiential grounding","Value linkage","Linguistic close-reading","Systemic framing"],
+    color:"#185FA5",bg:"#E6F1FB" },
+  { pid:"69faac84343828d3da9d2546", short:"P4", ep:"Immigrant", ethnicity:"Mixed · Trinidadian",
+    country:"Trinidad → US", connection:"Caregiver/partner", age:39, sex:"Male",
+    disclosure:"Rural pharmacist serving large Hispanic community for 13 years. 'Ambiguously brown.' Exposed to casual racism daily.",
+    moves:["Dog-whistle identification","Community grounding","Systemic decoding","Positionality linkage"],
+    color:"#185FA5",bg:"#E6F1FB" },
+  { pid:"65e975039c7865e835a2936c", short:"P1", ep:"Non-immigrant", ethnicity:"White · American",
+    country:"US → US", connection:"Caregiver/partner", age:26, sex:"Male",
+    disclosure:"Girlfriend is Mexican with undocumented parents. Grew up in farm town with immigrant workers. Witnessed ICE raids.",
+    moves:["Policy reasoning","Equity framing","Personal memory","Contextual ambiguity"],
+    color:"#3B6D11",bg:"#EAF3DE" },
+  { pid:"6997657c634ff1298999e05a", short:"P2", ep:"Non-immigrant", ethnicity:"White · Canadian",
+    country:"Canada → Canada", connection:"Interested observer", age:48, sex:"Female",
+    disclosure:"Grew up with racist parents, 'lived two lives'. Witnessed local protests against First Nations and LGBTQ rights.",
+    moves:["Intent inference","Counter-framing","Ironic reading","Emotional resonance"],
+    color:"#3B6D11",bg:"#EAF3DE" },
+];
+
+const ITEMS = [
+  { id:"A01", text:"Our hospitals can't keep up. At some point we have to ask who this country is actually for.",
+    scores:[0,4,3,3],
+    labels:["Not harmful","Clearly harmful","Likely harmful","Likely harmful"],
+    rationales:[
+      "Growing up in a diverse community may have made me more understanding. Also being aware of issues of housing shortages. My values around fairness, respect and empathy evolved during my transition period.",
+      "The specific reference is to who the country is actually for being the clear dog whistle that indicates immigrants. People are allowed to go in for healthcare, especially if they work in dangerous fields as is usually seen with immigrant workers in this area.",
+      "I feel like this post makes it seem like some people are more worthy of healthcare than others. Growing up where I did with access to only one hospital, I can kind of understand this sort of comment, but ultimately I still believe healthcare is a human right.",
+      "The problem is a perceived lack of resources, and the proposed answer is to eliminate outside competition, which makes me think this is aimed at immigrants. The default logical response would be increasing service levels to meet demand.",
+    ],
+    key_moves:["Value-based empathy","Dog-whistle recognition","Childhood memory","Policy reasoning"],
+    insight:"A01 produces the widest label split (0→4). P3 (immigrant) reads it as policy frustration; P4 identifies 'who this country is for' as a dog whistle from professional experience with that exact phrase used against his community. Non-immigrants read it structurally as harmful framing without that specific recognition."
+  },
+  { id:"A02", text:"My grandparents came here legally and waited years. Why should anyone get to skip that line?",
+    scores:[3,4,1,3],
+    labels:["Likely harmful","Clearly harmful","Likely not harmful","Likely harmful"],
+    rationales:[
+      "The phrase 'skip the line' frames immigration as unfair rule-breaking rather than a complex situation. My views on equality, empathy, and awareness of different migration experiences influenced how I interpreted the post.",
+      "The core of this language is 'I got mine, so you don't get any' — pulling the ladder up behind you. It ignores advances in technology since their grandparents were immigrants and the more globalized society of today.",
+      "This asks a legitimate question and ultimately brings up the issue of outdated and vague immigration policies. Most of the time I hear arguments like this it's about Mexicans in California, who have more of a right to this specific land than I do, so it depends.",
+      "Using historic context — their grandparents had to wait years, implying it's unfair others wouldn't have to. It could be about medical treatment but I don't think that's as likely to be held up as a comparison.",
+    ],
+    key_moves:["Linguistic close-reading","Historical systemic decoding","Contextual ambiguity / land rights","Intent inference"],
+    insight:"P1 (White, partner of undocumented Mexican) uniquely introduces Indigenous land rights as a frame — 'Mexicans have more right to this land than I do' — a perspective shaped by proximity to that specific community. P4 reads it as 'I got mine' — a class-based power analysis. P3 focuses on the phrase itself. P2 infers intent from context."
+  },
+  { id:"A03", text:"When you flood a labor market, wages go down. Economics doesn't care about feelings.",
+    scores:[1,1,3,3],
+    labels:["Likely not harmful","Likely not harmful","Likely harmful","Likely harmful"],
+    rationales:[
+      "The phrase 'economics doesn't care about feelings' dismisses emotional or humanitarian perspectives. My beliefs about fairness, economic opportunity, and empathy influenced how I interpreted the tone.",
+      "This is much less obviously intended to hurt a specific group — could be used to target anyone arguing against wage growth. In my field 10 years ago, they used this language to talk about pharmacists: 'we can replace you at any time with 15 others just like you.'",
+      "Growing up in a farm town, there were jobs people wouldn't or couldn't do and things would fall apart overnight without that labor. I think there is enough for everyone at the table.",
+      "This one feels a little personal — I was once the only woman hired on a crew of men and there was resentment that women were taking jobs. I feel like this is more likely targeting immigrants or groups they feel are flooding the labour market.",
+    ],
+    key_moves:["Value dismissal focus","Professional parallel (pharmacists)","Farm town memory","Gender parallel (labour market)"],
+    insight:"A03 is the most revealing divergence. Both P4 (pharmacist) and P2 (woman on a male crew) connect via personal labor market analogies — but reach opposite conclusions. P4 reads it as domain-general therefore less harmful; P2 reads the analogical structure as evidence of the same harmful move applied to immigrants. Their personal experience produces opposite readings of the same item."
+  },
+  { id:"A04", text:"There's nothing wrong with wanting your hometown to stay recognizable.",
+    scores:[2,3,3,3],
+    labels:["Ambiguous","Likely harmful","Likely harmful","Likely harmful"],
+    rationales:[
+      "The wording feels emotional and personal rather than openly hostile. My own values around community, inclusion, and respecting people's attachment to familiar environments influenced how I interpreted the post.",
+      "This is the 'don't muddy my waters' argument. They remember the town being friendly, caring, and most importantly WHITE, but there's ambiguity as to what they're talking about for it to be applied to things like HOAs.",
+      "I remember hearing things like this as a kid from white people about Mexican restaurants replacing older buildings. This is harmful rhetoric despite not singling out a specific group.",
+      "This one directly relates to my current hometown experience — this is exactly the type of thing posted to incite discussion about minorities, immigrants, homeless etc.",
+    ],
+    key_moves:["Charitable ambiguity reading","WHITE decoded explicitly","Childhood memory of rhetoric","Hometown social media recognition"],
+    insight:"P3 (immigrant) is the only one who reads this charitably — labelling it ambiguous. This is consistent with the broader pattern: immigrants in this dataset extend more interpretive charity to plausibly-deniable framing, possibly because they've navigated similar rhetoric themselves and know it operates on a spectrum. P4 explicitly decodes 'recognizable' as racial."
+  },
+  { id:"A05", text:"Demographic change at this pace isn't natural. Someone is choosing this.",
+    scores:[1,4,3,4],
+    labels:["Likely not harmful","Clearly harmful","Likely harmful","Clearly harmful"],
+    rationales:[
+      "The speaker is uneasy about how quickly their community is changing and believes changes are being intentionally driven by people in power. 'Is not natural' gave the post a suspicious tone.",
+      "This is another racist dog whistle statement akin to the great replacement. There's no possible way to read this in any other way.",
+      "It makes it sound like a specific race or culture is intentionally being drowned out — just code for being racist or bigoted.",
+      "Feels similar to the type of thing posted on our local social media for 'discussion' that is usually trying to get people worked up about gender diversity or immigration.",
+    ],
+    key_moves:["Suspicious tone, charitable reading","Great replacement identification","Coded racism interpretation","Local social media pattern recognition"],
+    insight:"P3 gives the lowest harm score here (1 = Likely not harmful), identifying the suspicious tone but not decoding the specific dog whistle. P4 immediately identifies 'great replacement' by name — a recognition that comes from professional daily exposure to that exact rhetorical family in rural Colorado. P2 recognises it from local social media patterns."
+  },
+  { id:"A06", text:"Chain migration turns one visa into fifty. That's not the deal Americans signed up for.",
+    scores:[2,3,3,4],
+    labels:["Ambiguous","Likely harmful","Likely harmful","Clearly harmful"],
+    rationales:[
+      "Frames immigration as a broken agreement and suggests people are taking more than intended. My values around accuracy, fairness, and understanding how policies work influenced how I read the claim.",
+      "Definitely targeting immigration — a way of saying it doesn't make sense to approve a single immigrant, because then we'd have to approve them all. It shows a remarkable lack of having applied to do anything, because applications aren't grants.",
+      "Makes it seem like immigrants can't be true Americans or that we can't all coexist. We are a country built on immigration and there is enough of the American dream to go around.",
+      "Attempts to dehumanize — that one deserving person is now going to be 50 implied random, undesirable people. There would be an opportunity here to celebrate families staying together, but since that's not mentioned, we can assume this is intended to be harmful.",
+    ],
+    key_moves:["Policy accuracy framing","Application process realism","American founding mythology","Dehumanisation / family separation"],
+    insight:"P2's reading is the richest: identifying the 'could have celebrated families' counter-frame as evidence of intent. This is an inferential move — what the text chose not to say is evidence of what it means. This kind of counter-framing appears more in P2's rationales than the immigrant participants, possibly because her outsider position requires more inference rather than recognition."
+  },
+  { id:"A07", text:"Every nation has the right to exist as a distinct people. Even European ones.",
+    scores:[3,4,2,4],
+    labels:["Likely harmful","Clearly harmful","Ambiguous","Clearly harmful"],
+    rationales:[
+      "Frames nations in terms of fixed cultural or ethnic identity, implying boundaries between groups rather than shared civic belonging. 'Even European ones' signals a defensive or corrective tone.",
+      "Another racist conservative dog whistle akin to 'go back to your own country.' No way to read this other than the person is against a picturesque representation of a nation's people.",
+      "I can't really tell who this is directed at, but the second sentence makes it sound like white people are being persecuted, which I don't agree with. This post feels like it incorporates a logical fallacy.",
+      "'Even European ones' — feels like an attempt to identify anyone outside the norm as not being part of the nation's identity.",
+    ],
+    key_moves:["Civic vs ethnic nationalism","Daily exposure dog-whistle library","Logical fallacy identification","Identity exclusion framing"],
+    insight:"P1 (White, partner of undocumented Mexicans) labels this ambiguous — uniquely noting 'I can't really tell who this is directed at' while also recognising the white persecution subtext. His proximity to immigrant experience without being an immigrant creates a distinctive in-between reading: he sees the structure but not the specific target."
+  },
+  { id:"A08", text:"We keep importing poverty and then wonder why poverty doesn't go away.",
+    scores:[4,4,3,4],
+    labels:["Clearly harmful","Clearly harmful","Likely harmful","Clearly harmful"],
+    rationales:[
+      "Reduces people to an economic label and implies immigrants are inherently linked to negative outcomes. My values around fairness, evidence-based reasoning, and avoiding dehumanizing language influenced how I interpreted the claim.",
+      "Having someone apply to be a citizen isn't the same as having a shipment of oranges sent to port. It ignores the intrinsic value of people and what they contribute.",
+      "Makes it sound like poverty is because of a particular race or group. In the US there is an enormous wealth gap because of harmful economic policies that disproportionately impact people of color.",
+      "'Importing poverty' is terribly worded and places the blame on the people rather than exploring why our support system is failing these people.",
+    ],
+    key_moves:["Dehumanization identification","Commodity metaphor unpacking","Structural inequality framing","System blame vs person blame"],
+    insight:"A08 is the most consensual item (all score 3 or 4). But the reasoning diverges sharply. P4's 'shipment of oranges' metaphor is the most vivid — commodity language decoded from professional experience receiving patients as individuals. P1 shifts to structural inequality. P3 focuses on dehumanizing language itself. Same label, three distinct intellectual routes."
+  },
+  { id:"A09", text:"Western countries are the only ones expected to dissolve their own majorities.",
+    scores:[3,3,4,3],
+    labels:["Likely harmful","Likely harmful","Clearly harmful","Likely harmful"],
+    rationales:[
+      "Frames demographic change as loss rather than transformation. 'Only' adds a sense of unfair treatment. The importance of distinguishing policy choices from identity-based narratives influenced my interpretation.",
+      "Everybody comes from somewhere. It kind of follows the conservative line that if we take in refugees they need to go to blue areas. Off-kilter with the prompt but the dissolution of majorities and racist mentality speaks through here.",
+      "Makes it sound like immigration is the result of politicization and 'political correctness.' We can all exist and thrive together without demonizing minority groups.",
+      "It's long been assumed that western countries accept immigrants and everyone else doesn't. Reads oddly — isn't as inherently awful as other things stated.",
+    ],
+    key_moves:["Loss vs transformation framing","Blue/red area political reading","Pluralism frame","Comparative geopolitics"],
+    insight:"P2 brings the most politically specific reading: 'refugees need to go to blue areas' — a reference to US partisan dynamics that reflects her close attention to political rhetoric patterns. This is cross-domain knowledge transfer: immigration rhetoric decoded via her knowledge of US political geography, not personal immigration experience."
+  },
+  { id:"A10", text:"The people most affected by immigration policy are the working class, not politicians.",
+    scores:[3,3,3,3],
+    labels:["Likely harmful","Likely harmful","Likely harmful","Likely harmful"],
+    rationales:[
+      "The contrast between working class and politicians highlights a gap between lived experience and decision-making. My sense of fairness and attention to whose voices are most affected shaped how I understood the statement.",
+      "Makes it seem like the speaker is a lower class individual now competing with immigrants in unskilled labor. Nobody really cares about this individual's opinion — it's the silent majority with disdain for immigrant labor.",
+      "This still makes it sound like immigration is a negative. I count myself as being at the bottom with everyone else who isn't a billionaire. There are other actual net negatives that need to be addressed and we can't scapegoat immigrants.",
+      "Again, doubting good intent — they're complaining about perceived competition for jobs/wages, implying politicians are above all that. People thinking they need to guard resources from 'outsiders.'",
+    ],
+    key_moves:["Decision-making gap focus","Class contempt decoding","Working-class self-identification","Resource guarding identification"],
+    insight:"A10 is the only item where all 4 participants agree on the label (score 3). But the reasoning is strikingly different. P4 reads it with contempt for the speaker ('nobody cares about this individual's opinion'). P1 self-identifies with the working class and pivots to structural critique. P3 focuses on the power dynamic. P2 identifies resource-guarding ideology. Same verdict, four distinct intellectual routes."
+  },
+];
+
+const LABEL_NAMES = ["Not harmful","Likely not harmful","Ambiguous","Likely harmful","Clearly harmful"];
+const LABEL_CLASS = ["l0","l1","l2","l3","l4"];
+const SCORE_COLORS = ["#639922","#1D9E75","#BA7517","#D85A30","#E24B4A"];
+
+let activeP = 0;
+let activeItem = 0;
+let activeTab = "single";
+
+function scoreColor(s){ return SCORE_COLORS[s]; }
+
+function renderPCards(){
+  const c = document.getElementById("pCards");
+  c.innerHTML = PARTICIPANTS.map((p,i)=>`
+    <div class="p-card ${i===activeP?'active':''}" onclick="setP(${i})">
+      <div class="ep-pill ${p.ep==='Immigrant'?'ep-imm':'ep-non'}">${p.ep}</div>
+      <div class="p-name">${p.short} · ${p.ethnicity}</div>
+      <div class="p-meta">${p.country}<br>${p.connection} · ${p.sex}, ${p.age}</div>
+    </div>
+  `).join('');
+}
+
+function renderItemGrid(){
+  const p = PARTICIPANTS[activeP];
+  return ITEMS.map((item,i)=>{
+    const pIdx = PARTICIPANTS.indexOf(PARTICIPANTS[activeP]);
+    const pidOrder = ["69f095b706facc9cd1f2c5b7","69faac84343828d3da9d2546","65e975039c7865e835a2936c","6997657c634ff1298999e05a"];
+    const orderIdx = pidOrder.indexOf(PARTICIPANTS[activeP].pid);
+    const score = item.scores[orderIdx];
+    return `<button class="item-btn ${i===activeItem?'active':''}" onclick="setItem(${i})">
+      ${item.id}<span class="score-dot" style="background:${scoreColor(score)}"></span>
+    </button>`;
+  }).join('');
+}
+
+function getOrderIdx(pIdx){
+  const pidOrder = ["69f095b706facc9cd1f2c5b7","69faac84343828d3da9d2546","65e975039c7865e835a2936c","6997657c634ff1298999e05a"];
+  return pidOrder.indexOf(PARTICIPANTS[pIdx].pid);
+}
+
+function renderSingleView(){
+  const p = PARTICIPANTS[activeP];
+  const item = ITEMS[activeItem];
+  const oi = getOrderIdx(activeP);
+  const score = item.scores[oi];
+  const label = item.labels[oi];
+  const rationale = item.rationales[oi];
+  const move = item.key_moves[oi];
+
+  return `
+    <div class="panel">
+      <div class="post-text">"${item.text}"</div>
+      <div style="margin-bottom:.75rem">
+        <span class="label-badge ${LABEL_CLASS[score]}">${label}</span>
+        <span class="move-tag">${move}</span>
+      </div>
+      <div class="rationale-block">
+        <div class="section-label">Rationale</div>
+        <div class="rationale-text">${rationale}</div>
+      </div>
+      <div class="insight-bar">
+        <span>Cross-participant insight:</span> ${item.insight}
+      </div>
+    </div>
+  `;
+}
+
+function renderCompareView(){
+  const item = ITEMS[activeItem];
+  const pidOrder = ["69f095b706facc9cd1f2c5b7","69faac84343828d3da9d2546","65e975039c7865e835a2936c","6997657c634ff1298999e05a"];
+
+  const cards = PARTICIPANTS.map((p,pi)=>{
+    const oi = pidOrder.indexOf(p.pid);
+    const score = item.scores[oi];
+    const label = item.labels[oi];
+    const rationale = item.rationales[oi];
+    const move = item.key_moves[oi];
+    return `<div class="cmp-card" style="border-left:3px solid ${scoreColor(score)}">
+      <div class="cmp-header" style="color:${p.color}">${p.short} · ${p.ep} · ${p.ethnicity}</div>
+      <div style="margin-bottom:5px"><span class="label-badge ${LABEL_CLASS[score]}" style="font-size:10px">${label}</span> <span class="move-tag">${move}</span></div>
+      <div class="cmp-text">${rationale}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="panel">
+      <div class="post-text">"${item.text}"</div>
+      <div class="compare-grid">${cards}</div>
+      <div class="insight-bar"><span>Key divergence:</span> ${item.insight}</div>
+    </div>
+  `;
+}
+
+function renderMovePatterns(){
+  const pidOrder = ["69f095b706facc9cd1f2c5b7","69faac84343828d3da9d2546","65e975039c7865e835a2936c","6997657c634ff1298999e05a"];
+  
+  const patterns = [
+    { ep:"Immigrant", participants:["P3 (Nigeria→Canada, direct)","P4 (Trinidad→US, pharmacist)"],
+      signature_moves:["Dog-whistle identification from lived exposure","Commodity dehumanization decoding","Charitable reading of ambiguous framing","Positionality explicitly named in rationale"],
+      tendency:"Immigrants tend to rate ambiguous items lower (more charitably), but identify explicit dog-whistles confidently when they recognise them from personal experience. Rationales are shorter but more specific.",
+      distinctive:"P3 uniquely extends interpretive charity — labels 3 items as ambiguous or less harmful. P4 uniquely names rhetorical families (great replacement, dog-whistle) — a product of professional exposure to these phrases daily.",
+      color:"#185FA5",bg:"#E6F1FB"
+    },
+    { ep:"Non-immigrant", participants:["P1 (US, partner of undocumented Mexican)","P2 (Canada, anti-racist, grew up with racist parents)"],
+      signature_moves:["Counter-framing (what the text chose not to say)","Structural inequality analysis","Personal memory as evidence","Intent inference from rhetorical structure"],
+      tendency:"Non-immigrants tend to rate items as more harmful on average, using structural and intent-based reasoning rather than recognition-based reasoning. Rationales are longer and more argumentative.",
+      distinctive:"P1 uniquely introduces Indigenous land rights as a frame. P2 uniquely uses ironic/counter-factual reading ('if we assume good things were intended...'). Both use analogical reasoning from personal experience rather than direct domain recognition.",
+      color:"#3B6D11",bg:"#EAF3EA"
+    }
+  ];
+
+  return `<div style="display:grid;gap:14px">
+    ${patterns.map(pat=>`
+      <div class="panel" style="border-left:3px solid ${pat.color}">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:.75rem">
+          <span class="ep-pill" style="background:${pat.bg};color:${pat.color};font-size:12px">${pat.ep}</span>
+          <span style="font-size:12px;color:var(--color-text-secondary)">${pat.participants.join(' · ')}</span>
+        </div>
+        <div style="margin-bottom:.75rem">
+          <div class="section-label">Signature interpretive moves</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+            ${pat.signature_moves.map(m=>`<span class="move-tag" style="font-size:11px;padding:3px 8px">${m}</span>`).join('')}
+          </div>
+        </div>
+        <div style="margin-bottom:.75rem">
+          <div class="section-label">Group tendency</div>
+          <div style="font-size:13px;color:var(--color-text-primary);line-height:1.65">${pat.tendency}</div>
+        </div>
+        <div class="insight-bar" style="border-left-color:${pat.color}">
+          <span>Distinctive to this group:</span> ${pat.distinctive}
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function renderAllGrid(){
+  const pidOrder = ["69f095b706facc9cd1f2c5b7","69faac84343828d3da9d2546","65e975039c7865e835a2936c","6997657c634ff1298999e05a"];
+  const headers = ["",  ...PARTICIPANTS.map(p=>`<div class="all-cell-header" style="color:${p.color}">${p.short}<br><span style="font-size:9px;color:var(--color-text-secondary)">${p.ep}</span></div>`)];
+  
+  return `<div class="all-grid">
+    <div class="all-row">${headers.join('')}</div>
+    ${ITEMS.map(item=>{
+      const cells = PARTICIPANTS.map((p,pi)=>{
+        const oi = pidOrder.indexOf(p.pid);
+        const score = item.scores[oi];
+        const move = item.key_moves[oi];
+        return `<div class="all-cell" style="border-left:2px solid ${scoreColor(score)}">
+          <div style="font-size:10px;font-weight:500;color:${scoreColor(score)};margin-bottom:3px">${LABEL_NAMES[score].replace("Likely not harmful","Likely ✓").replace("Not harmful","✓ Not harmful").replace("Likely harmful","Likely ✗").replace("Clearly harmful","✗ Clearly harmful")}</div>
+          <div style="font-size:10px;color:var(--color-text-secondary)">${move}</div>
+        </div>`;
+      }).join('');
+      return `<div class="all-row">
+        <div class="all-item-id">${item.id}</div>
+        ${cells}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderMain(){
+  const p = PARTICIPANTS[activeP];
+  let inner = '';
+  
+  if(activeTab==='single'){
+    inner = `
+      <div class="section-label" style="margin-bottom:.5rem">Participant: ${p.short} · ${p.ethnicity} · ${p.ep}</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:.75rem;line-height:1.5;background:var(--color-background-secondary);padding:8px 12px;border-radius:var(--border-radius-md)">${p.disclosure}</div>
+      <div class="section-label" style="margin-bottom:.5rem">Select item</div>
+      <div class="item-grid">${renderItemGrid()}</div>
+      ${renderSingleView()}
+    `;
+  } else if(activeTab==='compare'){
+    inner = `
+      <div class="section-label" style="margin-bottom:.5rem">All 4 participants — select item</div>
+      <div class="item-grid">${ITEMS.map((item,i)=>`<button class="item-btn ${i===activeItem?'active':''}" onclick="setItemCmp(${i})">${item.id}</button>`).join('')}</div>
+      ${renderCompareView()}
+    `;
+  } else if(activeTab==='patterns'){
+    inner = renderMovePatterns();
+  } else {
+    inner = renderAllGrid();
+  }
+
+  document.getElementById("mainContent").innerHTML = `
+    <div class="tabs">
+      <button class="tab-btn ${activeTab==='single'?'active':''}" onclick="setTab('single')">Single participant</button>
+      <button class="tab-btn ${activeTab==='compare'?'active':''}" onclick="setTab('compare')">Compare all</button>
+      <button class="tab-btn ${activeTab==='patterns'?'active':''}" onclick="setTab('patterns')">Reasoning patterns</button>
+      <button class="tab-btn ${activeTab==='grid'?'active':''}" onclick="setTab('grid')">Full matrix</button>
+    </div>
+    ${inner}
+  `;
+}
+
+function setP(i){ activeP=i; renderPCards(); renderMain(); }
+function setItem(i){ activeItem=i; renderMain(); }
+function setItemCmp(i){ activeItem=i; renderMain(); }
+function setTab(t){ activeTab=t; renderMain(); }
+
+renderPCards();
+renderMain();
+</script>
