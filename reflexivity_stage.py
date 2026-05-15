@@ -130,8 +130,7 @@ def render_reflexivity_stage(data: dict, GCS_BUCKET: str, get_gcs_client,
 
     st.write(
         "Before you finish, we'd like you to reflect on the annotations you just made. "
-        "Below you'll see any posts where your reading differed from other participants, "
-        "alongside their labels and reasoning."
+        
     )
 
     # ── Load & cache disagreement cards ──────────────────────────────────────
@@ -181,15 +180,15 @@ def render_reflexivity_stage(data: dict, GCS_BUCKET: str, get_gcs_client,
                 st.caption(f"*\"{card['my_rationale']}\"*")
             st.markdown("---")
     else:
-        st.info(
-            "Your labels were closely aligned with other participants across all the posts you annotated."
-        )
+        # st.info(
+        #     "Your labels were closely aligned with other participants across all the posts you annotated."
+        # )
         st.markdown("---")
 
     # ── Static reflection prompt ──────────────────────────────────────────────
     if cards:
         st.markdown(
-            "*Looking at the posts above, where your reading differed from others' — "
+            "*Looking at the posts and rationales above, where your reading differed from others' — "
             "what aspects of your background, experiences, or values do you think shaped "
             "how you read these differently? There are no right or wrong answers here. "
             "We're interested in the connection between who you are and how you annotate.*"
