@@ -195,7 +195,7 @@ def render_reflexivity_stage(data: dict, GCS_BUCKET: str, get_gcs_client,
         )
     else:
         st.markdown(
-            "Reflecting on the annotations you made — what aspects of your background, "
+            "What aspects of your background, "
             "experiences, or values do you think shaped how you read and label this content? "
             "There are no right or wrong answers.*"
         )
