@@ -37,7 +37,7 @@ ANNOTATION DESIGN
   • Positionality salience reframed as identity resonance (reflexivity, not bias admission).
   • Rationale minimum: 50 words.
 
-MICRONARRATIVE: Boyle & Butcher (2024) — fidelity to participant's own words,
+MICRONARRATIVE: skeggs et al. (2025) — fidelity to participant's own words,
   no reinterpretation, first person, warm tone, minimum 120 words.
 
 MODEL: Qwen/Qwen2.5-7B-Instruct via HF Inference API.
@@ -233,7 +233,7 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         # "resumed_at": None,
         # "paused_at": None,
         # "scenario_id": random.choice(SCENARIOS)["id"], # uncomment this for main study
-        "scenario_id": "A",
+        "scenario_id": "B",
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],
