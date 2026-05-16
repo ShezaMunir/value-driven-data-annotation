@@ -153,7 +153,7 @@ DATAPOINTS = [
     {"id": "C09", "scenario": "C", "domain": "INT",
      "text": "First-generation immigrant women are often the most opposed to feminism. Nobody ever asks them why."},
     {"id": "C10", "scenario": "C", "domain": "INT",
-     "text": "Jewish students are told their discomfort with certain political spaces doesn't count as discrimination. Wonder why."},
+     "text": "We have a word for communities where women can't leave the house without permission. We're just not allowed to use it anymore."},
 ]
 
 # ─── Scenarios ────────────────────────────────────────────────────────────────
@@ -206,8 +206,8 @@ SCENARIOS = [
             "more institutional sympathy than others. The comments split immediately: some students share "
             "personal accounts of discrimination they say went unacknowledged, while others post "
             "screenshots of what they describe as reverse bias in hiring and disciplinary processes. "
-            "A graduate student quietly posts a one-sentence reply — 'I've never once felt my experience "
-            "was counted the same as others here' — and it disappears under the wave of debate."
+            "Amidst the heated exchanges, one student reflects on their own experiences with marginalization but it drowns out in a sea of opinions."
+
         ),
         "elicitation_focus": "identity, fairness, visibility, belonging, or feeling counted",
         "datapoint_ids": ["C01","C02","C03","C04","C05","C06","C07","C08","C09","C10"],
