@@ -6,7 +6,7 @@ CONTROL ARM DESIGN NOTES (not shown to participants):
   This is the baseline descriptive annotation condition.
   Identical to pilot_study.py EXCEPT:
     1. Stages 2 (elicitation_chat) and 3 (synthesis/micronarrative) are removed.
-    2. Workflow is: disclosure → annotation → reflexivity → complete.
+    2. Workflow is: annotation → disclosure → reflexivity → complete.
     3. The study intro does NOT mention positionality or lived experience shaping annotation.
     4. The narrative expander in annotation is hidden (no micronarrative was produced).
     5. condition = "no_elicitation" is stored in every participant record.
@@ -205,7 +205,7 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "created_at": datetime.utcnow().isoformat(),
         "condition": "no_elicitation",           # ← control arm marker
         "scenario_id": "B",
-        "workflow_stage": "disclosure",
+        "workflow_stage": "annotation",
         "disclosure": {},
         "elicitation": [],                        # always empty in control arm
         "micronarrative": "",                     # always empty in control arm
@@ -704,8 +704,8 @@ def main():
         # st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
         labels = {
-            "disclosure": "1 -- Background",
-            "annotation": "2 -- Annotations",
+            "annotation": "1 -- Annotations",
+            "disclosure": "2 -- Background",
             "reflexivity": "3 -- Reflect",
             "complete": "✓ Done"
         }
@@ -744,7 +744,7 @@ def main():
 
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
     if stage == "disclosure":
-        st.markdown("<div class='step-label'>Step 1 of 2</div>", unsafe_allow_html=True)
+        st.markdown("<div class='step-label'>Step 2 of 2</div>", unsafe_allow_html=True)
         st.title("A bit about you")
         prog(1, 2)
         st.write(
@@ -777,7 +777,7 @@ def main():
                 st.warning("Please fill in how long this topic has been part of your life.")
             else:
                 data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
-                data["workflow_stage"] = "annotation"   # ← skip directly to annotation
+                data["workflow_stage"] = "reflexivity"   # ← advance to reflexivity after disclosure
                 st.rerun()
 
     # ── STAGE 2: ANNOTATION ───────────────────────────────────────────────────
@@ -795,7 +795,7 @@ def main():
                 height=0,
             )
             st.markdown(
-                f"<div class='step-label'>Step 2 of 2 -- Post {idx+1} of {len(datapoints)}</div>",
+                f"<div class='step-label'>Step 1 of 2 -- Post {idx+1} of {len(datapoints)}</div>",
                 unsafe_allow_html=True
             )
             st.title("Annotating social media posts")
@@ -930,7 +930,7 @@ def main():
 
         else:
             # All annotations done -- advance to reflexivity stage
-            data["workflow_stage"] = "reflexivity"
+            data["workflow_stage"] = "disclosure"
             st.session_state.pdata = data
             st.rerun()
             
