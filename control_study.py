@@ -742,46 +742,8 @@ def main():
         # st.markdown("---")
         st.caption("Data is held in memory and saved securely at the end.")
 
-    # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
-    if stage == "disclosure":
-        st.markdown("<div class='step-label'>Step 2 of 2</div>", unsafe_allow_html=True)
-        st.title("A bit about you")
-        prog(1, 2)
-        st.write(
-            "Before we begin, we'd like to collect a few background details. "
-            "This helps us understand the range of perspectives in the study."
-        )
-
-        conn = st.selectbox(
-            "How would you describe your connection to topics of immigration, religion, or identity and belonging?",
-            [
-                "-- please select --",
-                "I have direct personal experience (as an immigrant, refugee, religious minority, or member of a marginalised group)",
-                "I'm a caregiver, partner, or close community member of someone with this experience",
-                "I work or study in this area professionally or academically",
-                "I'm an interested observer -- no direct personal connection",
-            ],
-        )
-        duration = st.text_input(
-            "How long has this been part of your life or work? (e.g., 'my whole life', '3 years')"
-        )
-        disclosure = st.text_area(
-            "Briefly describe how this topic relates to your life.",
-            height=100,
-        )
-
-        if st.button("Continue →", type="primary"):
-            if conn == "-- please select --":
-                st.warning("Please select an option before continuing.")
-            elif not duration.strip():
-                st.warning("Please fill in how long this topic has been part of your life.")
-            else:
-                data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
-                data["workflow_stage"] = "reflexivity"   # ← advance to reflexivity after disclosure
-                st.rerun()
-
-    # ── STAGE 2: ANNOTATION ───────────────────────────────────────────────────
-    elif stage == "annotation":
+    # ── STAGE 1: ANNOTATION ───────────────────────────────────────────────────
+    if stage == "annotation":
         datapoints = get_datapoints(data["scenario_id"])
         idx = len(data["annotations"])
 
@@ -795,7 +757,7 @@ def main():
                 height=0,
             )
             st.markdown(
-                f"<div class='step-label'>Step 1 of 2 -- Post {idx+1} of {len(datapoints)}</div>",
+                f"<div class='step-label'>Step 1 of 3 -- Post {idx+1} of {len(datapoints)}</div>",
                 unsafe_allow_html=True
             )
             st.title("Annotating social media posts")
@@ -929,11 +891,49 @@ def main():
                         st.rerun()
 
         else:
-            # All annotations done -- advance to reflexivity stage
+            # All annotations done -- advance to disclosure stage
             data["workflow_stage"] = "disclosure"
             st.session_state.pdata = data
             st.rerun()
-            
+
+    # ── STAGE 2: DISCLOSURE ───────────────────────────────────────────────────
+    elif stage == "disclosure":
+        st.markdown("<div class='step-label'>Step 2 of 3</div>", unsafe_allow_html=True)
+        st.title("A bit about you")
+        prog(2, 3)
+        st.write(
+            "Before we begin, we'd like to collect a few background details. "
+            "This helps us understand the range of perspectives in the study."
+        )
+
+        conn = st.selectbox(
+            "How would you describe your connection to topics of immigration, religion, or identity and belonging?",
+            [
+                "-- please select --",
+                "I have direct personal experience (as an immigrant, refugee, religious minority, or member of a marginalised group)",
+                "I'm a caregiver, partner, or close community member of someone with this experience",
+                "I work or study in this area professionally or academically",
+                "I'm an interested observer -- no direct personal connection",
+            ],
+        )
+        duration = st.text_input(
+            "How long has this been part of your life or work? (e.g., 'my whole life', '3 years')"
+        )
+        disclosure = st.text_area(
+            "Briefly describe how this topic relates to your life.",
+            height=100,
+        )
+
+        if st.button("Continue →", type="primary"):
+            if conn == "-- please select --":
+                st.warning("Please select an option before continuing.")
+            elif not duration.strip():
+                st.warning("Please fill in how long this topic has been part of your life.")
+            else:
+                data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
+                data["workflow_stage"] = "reflexivity"
+                st.rerun()
+
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     # elif stage == "complete":
     #     st.balloons()
