@@ -1,46 +1,19 @@
 """
-pilot_study.py — Ambiguous Hate Speech Positionality Annotation Study
+control_study.py -- Ambiguous Hate Speech Annotation Study (No-Elicitation Control Arm)
 Researcher: Sheza Munir
 
-to test: 
-https://value-driven-data-annotation-v2.streamlit.app/?PROLIFIC_PID=test123&STUDY_ID=study456&SESSION_ID=session789
-
-═══════════════════════════════════════════════════════════════════════════════
-THEORETICAL GROUNDING (not shown to participants)
-═══════════════════════════════════════════════════════════════════════════════
-
-ORDERING — Elicitation FIRST, annotation SECOND.
-  Smythe et al. (2008) "Methodological Considerations for Interpretive Phenomenological
-  Inquiry" — narrative/reflective mindset befor`e evaluation tasks enriches rationale depth.
-  Annotation-first activates cold "judge mode" that suppresses lived-experience disclosure.
-
-ELICITATION DESIGN
-  • Lived-experience axes (critical computing / NLP / HCI framework):
-      1. Sociocultural & Geographic Context
-      2. Linguistic Background & Dialect
-      3. Socioeconomic Status & Labor Dynamics
-      4. Race & Ethnicity
-      5. Gender Identity & Sexual Orientation
-      6. Disability & Neurodivergence
-      7. Domain Expertise vs. Epistemic Proximity
-  • 5-turn hard cap with graceful wind-down at turn 4.
-  • Vignette construction: Barter & Renold (1999) — 80–150 words, grounded in dataset
-    thematic clusters, max 3 vignettes to avoid fatigue.
-  • Iterative probing: Willig (2013) — initial reaction → harm/target cue → axis deepening.
-  • Hermeneutic circle: Smythe (2008) — later prompts reference earlier answers.
-
-ANNOTATION DESIGN
-  • 10 posts per scenario from the ambiguous hate speech dataset (Munir 2024).
-    Sampled across 4 domains: Immigration/Nativism, Religion, Gender/Sexuality, Intersectional.
-  • All items satisfy C1–C4 of the ambiguity codebook (surface plausible deniability,
-    experiential divergence, discourse embeddedness, no explicit derogation).
-  • Positionality salience reframed as identity resonance (reflexivity, not bias admission).
-  • Rationale minimum: 50 words.
-
-MICRONARRATIVE: skeggs et al. (2025) — fidelity to participant's own words,
-  no reinterpretation, first person, warm tone, minimum 120 words.
-
-MODEL: Qwen/Qwen2.5-7B-Instruct via HF Inference API.
+CONTROL ARM DESIGN NOTES (not shown to participants):
+  This is the baseline descriptive annotation condition.
+  Identical to pilot_study.py EXCEPT:
+    1. Stages 2 (elicitation_chat) and 3 (synthesis/micronarrative) are removed.
+    2. Workflow is: disclosure → annotation → reflexivity → complete.
+    3. The study intro does NOT mention positionality or lived experience shaping annotation.
+    4. The narrative expander in annotation is hidden (no micronarrative was produced).
+    5. condition = "no_elicitation" is stored in every participant record.
+  Everything else -- label taxonomy, rationale prompt, salience slider, reflexivity stage --
+  is identical to the treatment arm. This ensures the only difference is elicitation activation.
+  Per Röttger et al. (2022): both arms are descriptive-paradigm annotation.
+  The comparison is latent positionality (control) vs. activated positionality (treatment).
 """
 
 import streamlit as st
@@ -79,7 +52,7 @@ MIN_RATIONALE_WORDS = 50
 # ─── Dataset ──────────────────────────────────────────────────────────────────
 # Source: Munir (2024) Ambiguous Hate Speech Dataset.
 # Domain: IMM = Immigration/Nativism, REL = Religion, GEN = Gender/Sexuality, INT = Intersectional.
-# All items satisfy C1–C4 of the ambiguity codebook (surface plausible deniability,
+# All items satisfy C1-C4 of the ambiguity codebook (surface plausible deniability,
 # experiential divergence, discourse embeddedness, no explicit derogation).
 
 DATAPOINTS = [
@@ -174,7 +147,7 @@ SCENARIOS = [
         "elicitation_focus": "personal safety, national identity, belonging, or community ties",
         "datapoint_ids": ["A01","A02","A03","A04","A05","A06","A07","A08","A09","A10"],
         "opening_q": (
-            "Reading through that passage — what stands out to you first? "
+            "Reading through that passage -- what stands out to you first? "
             "Is there something you connect with on a personal level, or something that feels distant?"
         ),
     },
@@ -193,7 +166,7 @@ SCENARIOS = [
         "elicitation_focus": "cultural identity, religious belonging, dignity, or what 'home' means",
         "datapoint_ids": ["B01","B02","B03","B04","B05","B06","B07","B08","B09","B10"],
         "opening_q": (
-            "Reading through that passage — what stands out to you first? "
+            "Reading through that passage -- what stands out to you first? "
             "Is there something that resonates personally, or something that feels uncomfortable or foreign?"
         ),
     },
@@ -212,7 +185,7 @@ SCENARIOS = [
         "elicitation_focus": "identity, fairness, visibility, belonging, or feeling counted",
         "datapoint_ids": ["C01","C02","C03","C04","C05","C06","C07","C08","C09","C10"],
         "opening_q": (
-            "Reading through that passage — what stands out to you first? "
+            "Reading through that passage -- what stands out to you first? "
             "Is there a moment, a feeling, or a person in it you find yourself drawn to?"
         ),
     },
@@ -230,16 +203,13 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "prolific_study_id": study_id,
         "prolific_session_id": session_id,
         "created_at": datetime.utcnow().isoformat(),
-        # "resumed_at": None,
-        # "paused_at": None,
-        # "scenario_id": random.choice(SCENARIOS)["id"], # uncomment this for main study
-        "scenario_id": "B",
+        "condition": "no_elicitation",           # ← control arm marker
+        "scenario_id": "A",
         "workflow_stage": "disclosure",
         "disclosure": {},
-        "elicitation": [],
-        "micronarrative": "",
+        "elicitation": [],                        # always empty in control arm
+        "micronarrative": "",                     # always empty in control arm
         "annotations": [],
-        # "pause_code": None,
         "consented_at": datetime.utcnow().isoformat(),
         "reflexivity_response":     "",
         "reflexivity_cards_shown":  [],
@@ -256,7 +226,7 @@ def get_datapoints(sid: str) -> list:
 
 def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
-        return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
+        return "[Set HF_TOKEN to enable the AI interviewer -- see README.]"
     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
     try:
         response = client.chat_completion(
@@ -272,25 +242,25 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
 
 AXES_CONTEXT = """\
 You are conducting a qualitative lived-experience elicitation as part of an academic study on annotation and positionality. \
-The participant has just read a scenario. Your job is to draw out their personal relationship to the themes in it — \
+The participant has just read a scenario. Your job is to draw out their personal relationship to the themes in it - \
 not their opinions about the scenario, but their lived experience that shapes how they would read and interpret it.
 
 The seven lived-experience axes below are lenses. Work through them across the conversation. \
-Do NOT name them or list them — use them invisibly:
+Do NOT name them or list them -- use them invisibly:
 
-  A. Sociocultural & geographic context — where they grew up, cultural norms, value systems
-  B. Linguistic background — native language, code-switching, dialect, how they navigate registers
-  C. Socioeconomic & labor — class, economic precarity, workplace power dynamics
-  D. Race & ethnicity — racial identity, marginalization, how others perceive them
-  E. Gender & sexuality — lived gender/sexuality, how systems categorize them
-  F. Disability & neurodivergence — physical, cognitive, sensory experience; what 'normal' excludes
-  G. Epistemic proximity — how personally close they are to the people most affected by this scenario
+  A. Sociocultural & geographic context -- where they grew up, cultural norms, value systems
+  B. Linguistic background -- native language, code-switching, dialect, how they navigate registers
+  C. Socioeconomic & labor -- class, economic precarity, workplace power dynamics
+  D. Race & ethnicity -- racial identity, marginalization, how others perceive them
+  E. Gender & sexuality -- lived gender/sexuality, how systems categorize them
+  F. Disability & neurodivergence -- physical, cognitive, sensory experience; what 'normal' excludes
+  G. Epistemic proximity -- how personally close they are to the people most affected by this scenario
 
-CORE RULES — apply every single turn:
+CORE RULES -- apply every single turn:
 - Ask exactly ONE question. If you feel the urge to ask two, cut the second one.
-- 1–2 sentences maximum. No affirmations ('great', 'thank you', 'I see'). No summaries of what they said.
+- 1-2 sentences maximum. No affirmations ('great', 'thank you', 'I see'). No summaries of what they said.
 - Never paraphrase their answer back to them.
-- Anchor every question to something specific they actually said — never ask generically.
+- Anchor every question to something specific they actually said -- never ask generically.
 - If their last answer was thin (fewer than ~15 words), do NOT pivot to a new axis. Stay with the same thread and ask for a concrete example or memory.
 - Move to a new axis only when you have substantive material on the current one.\
 """
@@ -342,55 +312,55 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "", elicit
 
     if user_turns == 1:
         p += (
-            "TURN 1 — OPENING:\n"
+            "TURN 1 -- OPENING:\n"
             "The participant just gave their first response. Pick the single most specific or emotionally "
-            "loaded thing they said. Ask one question that connects it to their personal history — "
+            "loaded thing they said. Ask one question that connects it to their personal history -- "
             "where they're from, who they are, or how they relate to the people in the scenario. "
             "Axis A, D, or G are natural starting points. Stay concrete and personal."
         )
 
     elif is_thin:
         p += (
-            f"REPAIR TURN — the participant's last response was very short: \"{last_clean}\"\n"
+            f"REPAIR TURN -- the participant's last response was very short: \"{last_clean}\"\n"
             "Do not move to a new axis. Ask them to ground what they said in a specific moment, "
-            "memory, or example from their own life. Stay on the same thread — just go one level deeper."
+            "memory, or example from their own life. Stay on the same thread -- just go one level deeper."
         )
 
     elif user_turns <= 3:
         if uncovered:
             next_axis = uncovered[0]
             p += (
-                f"TURN {user_turns} — BROADEN:\n"
+                f"TURN {user_turns} -- BROADEN:\n"
                 f"You have good material from the current thread. Now open a new dimension. "
                 f"The next untouched axis is {next_axis} ({axis_labels[next_axis]}). "
                 f"Find a natural bridge from what they just said: \"{last_clean[:200]}\" "
-                f"to ask about {axis_labels[next_axis]}. Don't announce the topic change — "
+                f"to ask about {axis_labels[next_axis]}. Don't announce the topic change -- "
                 f"make the question feel like a natural follow from what they shared."
             )
         else:
             p += (
-                f"TURN {user_turns} — DEEPEN:\n"
+                f"TURN {user_turns} -- DEEPEN:\n"
                 f"All major axes have been touched. Go deeper on the one that feels richest. "
-                f"Ask: what made that experience personally significant — not just what happened, "
+                f"Ask: what made that experience personally significant -- not just what happened, "
                 f"but what it revealed about how they see themselves in situations like this one. "
                 f"Anchor to: \"{last_clean[:200]}\""
             )
 
     elif user_turns == 4:
         p += (
-            "TURN 4 — INTEGRATION:\n"
+            "TURN 4 -- INTEGRATION:\n"
             "You are approaching the end. Ask one question that invites the participant to connect "
-            "the threads — how does their background, identity, or experience shape the lens "
+            "the threads -- how does their background, identity, or experience shape the lens "
             "through which they would read content like this scenario? Keep it open and gentle. "
             "Do NOT repeat a question type you've already asked.\n\n"
             "STOPPING CONDITION: If the participant has shared enough across the conversation "
-            "to support a coherent 4–5 sentence narrative covering at least 3 axes, "
+            "to support a coherent 4-5 sentence narrative covering at least 3 axes, "
             "end your response with the exact text: READY_TO_BUILD"
         )
 
     elif user_turns >= 5:
         p += (
-            "FINAL TURN — CRITICAL OVERRIDE:\n"
+            "FINAL TURN -- CRITICAL OVERRIDE:\n"
             "Do NOT ask any question. Thank the participant warmly in exactly one sentence. "
             "You MUST end your response with the exact text: READY_TO_BUILD"
         )
@@ -403,12 +373,12 @@ Write a first-person narrative (minimum 120 words) that faithfully captures what
 
 Rules:
 - Use 'I' throughout.
-- Preserve the participant's own specific words and phrases wherever possible — do not sanitise their voice.
+- Preserve the participant's own specific words and phrases wherever possible -- do not sanitise their voice.
 - Do NOT add feelings, interpretations, or experiences they did not express.
 - Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
 emotional response, sense of identity or belonging, relationship to the community depicted).
-- The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
-- Friendly, natural, warm tone — not clinical or academic.
+- The narrative should read as a coherent, flowing piece of personal reflection -- not a bullet list or summary.
+- Friendly, natural, warm tone -- not clinical or academic.
 - Do not include a title or preamble. Output ONLY the narrative text.\
 """
 
@@ -517,7 +487,7 @@ def _elapsed_seconds(start_iso: str, end_iso: str) -> int:
 def save_progress_to_gcs(data: dict):
     """
     Overwrites a single in-progress file per participant on every annotation save.
-    Only one file exists at a time — the most recent state.
+    Only one file exists at a time -- the most recent state.
     """
     try:
         gcs = get_gcs_client()
@@ -549,7 +519,7 @@ def save_progress_to_gcs(data: dict):
             content_type="application/json"
         )
     except Exception:
-        pass  # Silent — never interrupt participant flow
+        pass  # Silent -- never interrupt participant flow
 
 
 def save_complete_to_gcs(data: dict):
@@ -562,9 +532,8 @@ def save_complete_to_gcs(data: dict):
 
     final = {
         "participant_id": pid,
-        # "participant_name": data["name"],
         "created_at": data["created_at"],
-        # "resumed_at": data.get("resumed_at"),
+        "condition": data.get("condition", "no_elicitation"),   # ← control arm marker
         "scenario_id": data["scenario_id"],
         "connection_type": data["disclosure"].get("connection_type", ""),
         "duration": data["disclosure"].get("duration", ""),
@@ -611,7 +580,7 @@ def render_word_counter(text: str, minimum: int):
     else:
         remaining = minimum - words
         st.markdown(
-            f"<div class='word-counter-low'>{words} / {minimum} words — {remaining} more to go</div>",
+            f"<div class='word-counter-low'>{words} / {minimum} words -- {remaining} more to go</div>",
             unsafe_allow_html=True
         )
 
@@ -655,7 +624,7 @@ def scroll_to_bottom():
 
 def main():
     st.set_page_config(
-        page_title="Hate Speech & Belonging — Annotation Study",
+        page_title="Hate Speech & Belonging -- Annotation Study",
         layout="centered",
         page_icon="🗣"
     )
@@ -666,24 +635,24 @@ def main():
     if "pdata" not in st.session_state:
         st.markdown("<div class='step-label'>Annotation Study</div>", unsafe_allow_html=True)
         st.title("Hate Speech & Belonging")
-        st.markdown("*A positionality-aware annotation study*")
+        st.markdown("*A content annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about 35–40 minutes. You'll first share a bit about your own "
-            "perspective and experiences, then read and annotate a small set of social media posts, and reflect. "
+            "This study takes about 20-25 minutes. You'll answer a few background questions, "
+            "then read and annotate a small set of social media posts. "
             "There are no right or wrong answers."
         )
 
-        with st.expander("ℹ️ Participant information & consent — please read before starting", expanded=True):
+        with st.expander("ℹ️ Participant information & consent -- please read before starting", expanded=True):
             st.markdown(
                 """
-**Purpose:** This study examines whether personal experience shapes how people annotate data. Your perspective, and the reasoning behind it, is the data.
+**Purpose:** This study examines how people interpret ambiguous social media content. Your judgements and reasoning are the data.
 
-**What you'll do:** Share your background, speak with an AI interviewer about your experiences, then annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
+**What you'll do:** Share a few background details, then annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
 
-**Data & consent:** Responses are stored securely and used for academic research only. Your narrative and rationales may be quoted anonymously in publications. You may stop at any time — incomplete responses will not be used.
+**Data & consent:** Responses are stored securely and used for academic research only. Your rationales may be quoted anonymously in publications. You may stop at any time -- incomplete responses will not be used.
 
-⚠️ Please do not use AI tools (ChatGPT, Claude, etc.) to answer any questions in this study. We are studying your personal perspective — AI-generated responses undermine the research and may result in your submission being rejected.
+⚠️ Please do not use AI tools (ChatGPT, Claude, etc.) to answer any questions in this study. We are studying your personal perspective -- AI-generated responses undermine the research and may result in your submission being rejected.
                 """
             )
         consent = st.checkbox("I have read the above information and agree to participate.")
@@ -735,11 +704,9 @@ def main():
         # st.markdown(f"**{data['name']}**")
         st.markdown(f"*{scenario['theme']}*")
         labels = {
-            "disclosure": "1 — Background",
-            "elicitation_chat": "2 — Your experience",
-            "synthesis": "3 — Your narrative",
-            "annotation": "4 — Annotations",
-            "reflexivity": "5 — Reflect",
+            "disclosure": "1 -- Background",
+            "annotation": "2 -- Annotations",
+            "reflexivity": "3 -- Reflect",
             "complete": "✓ Done"
         }
         st.caption(labels.get(stage, stage))
@@ -777,22 +744,22 @@ def main():
 
     # ── STAGE 1: DISCLOSURE ───────────────────────────────────────────────────
     if stage == "disclosure":
-        st.markdown("<div class='step-label'>Step 1 of 4</div>", unsafe_allow_html=True)
+        st.markdown("<div class='step-label'>Step 1 of 2</div>", unsafe_allow_html=True)
         st.title("A bit about you")
-        prog(1, 4)
+        prog(1, 2)
         st.write(
-            "Before we begin, we'd like to understand your connection to this topic. "
-            "This context shapes how we interpret your annotations — it won't affect your participation."
+            "Before we begin, we'd like to collect a few background details. "
+            "This helps us understand the range of perspectives in the study."
         )
 
         conn = st.selectbox(
             "How would you describe your connection to topics of immigration, religion, or identity and belonging?",
             [
-                "— please select —",
+                "-- please select --",
                 "I have direct personal experience (as an immigrant, refugee, religious minority, or member of a marginalised group)",
                 "I'm a caregiver, partner, or close community member of someone with this experience",
                 "I work or study in this area professionally or academically",
-                "I'm an interested observer — no direct personal connection",
+                "I'm an interested observer -- no direct personal connection",
             ],
         )
         duration = st.text_input(
@@ -804,131 +771,22 @@ def main():
         )
 
         if st.button("Continue →", type="primary"):
-            if conn == "— please select —":
+            if conn == "-- please select --":
                 st.warning("Please select an option before continuing.")
             elif not duration.strip():
                 st.warning("Please fill in how long this topic has been part of your life.")
             else:
                 data["disclosure"] = {"connection_type": conn, "duration": duration, "text": disclosure}
-                data["workflow_stage"] = "elicitation_chat"
+                data["workflow_stage"] = "annotation"   # ← skip directly to annotation
                 st.rerun()
 
-    # ── STAGE 2: ELICITATION ──────────────────────────────────────────────────
-    elif stage == "elicitation_chat":
-        st.markdown("<div class='step-label'>Step 2 of 4 — Your Experience</div>", unsafe_allow_html=True)
-        st.title("Your perspective")
-        prog(2, 4)
-
-        # Instruction BEFORE the passage
-        st.write(
-            "Read the passage below, then respond to the interviewer's questions in the chat. "
-            "There are no right/wrong answers — we're interested in your genuine reactions and "
-            "personal experiences. Aim for 2–3 sentences per reply."
-        )
-        st.markdown(f"<div class='vignette-card'>{scenario['vignette']}</div>", unsafe_allow_html=True)
-
-        # Render chat history
-        for msg in data["elicitation"]:
-            with st.chat_message(msg["role"]):
-                st.write(msg["content"])
-
-        # Seed opening question on first load
-        if not data["elicitation"]:
-            data["elicitation"].append({"role": "assistant", "content": scenario["opening_q"]})
-            st.rerun()
-
-        user_turns = sum(1 for m in data["elicitation"] if m["role"] == "user")
-        max_turns = 5
-
-        if user_turns < max_turns:
-            if user_input := st.chat_input("Your response…"):
-                data["elicitation"].append({"role": "user", "content": user_input})
-                # Fix #1: recount AFTER appending so turn number is accurate
-                current_turn = sum(1 for m in data["elicitation"] if m["role"] == "user")
-                sys_p = elicitation_sys(scenario, current_turn, user_input, data["elicitation"])
-                response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
-
-                if "READY_TO_BUILD" in response:
-                    clean = response.replace("READY_TO_BUILD", "").strip()
-                    if clean:
-                        data["elicitation"].append({"role": "assistant", "content": clean})
-                    data["workflow_stage"] = "synthesis"
-                else:
-                    data["elicitation"].append({"role": "assistant", "content": response})
-                st.rerun()
-        else:
-            # Auto-advance after hard cap
-            if data["workflow_stage"] == "elicitation_chat":
-                data["workflow_stage"] = "synthesis"
-                st.rerun()
-
-        scroll_to_bottom()
-
-    # ── STAGE 3: SYNTHESIS ────────────────────────────────────────────────────
-    elif stage == "synthesis":
-        st.markdown("<div class='step-label'>Step 3 of 4 — Your Narrative</div>", unsafe_allow_html=True)
-        st.title("Your story, in your words")
-        prog(3, 4)
-        st.write(
-            "Based on what you shared, we've drafted a short narrative in your voice. "
-            "Edit anything that doesn't feel accurate or complete, then accept it to continue."
-        )
-
-        # Q&A replay shown above the narrative
-        render_chat_replay(data["elicitation"])
-
-        if not data.get("micronarrative"):
-            with st.spinner("Drafting your narrative…"):
-                fragments = "\n".join(
-                    m["content"] for m in data["elicitation"] if m["role"] == "user"
-                )
-                result = call_qwen(
-                    SYNTHESIS_SYS,
-                    [{"role": "user", "content": fragments}],
-                    max_tokens=400
-                )
-                # Fix #11: don't save error strings as the narrative
-                if result.startswith("["):
-                    st.error("Couldn't reach the AI model. Please try regenerating in a moment.")
-                    st.stop()
-                data["micronarrative"] = result
-
-        # Fix #6: key includes a hash of the narrative content so widget resets when regenerated
-        narrative_key = f"narrative_{hash(data['micronarrative'])}"
-        edited = st.text_area(
-            "Your narrative (edit freely):",
-            value=data["micronarrative"],
-            height=230,
-            key=narrative_key,
-        )
-        nar_words = len(edited.strip().split()) if edited.strip() else 0
-        render_word_counter(edited, 100)  # Fix #10: raise floor to 100 to match synthesis prompt
-
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            if st.button("↺ Regenerate"):
-                data["micronarrative"] = ""
-                st.rerun()
-        with c2:
-            if st.button("Accept & start annotations →", type="primary"):
-                if nar_words < 100:  # Fix #10
-                    st.warning(
-                        f"Your narrative is {nar_words} words. "
-                        "Please expand it to at least 100 words before continuing."
-                    )
-                else:
-                    data["micronarrative"] = edited
-                    data["workflow_stage"] = "annotation"
-                    st.rerun()
-
-    # ── STAGE 4: ANNOTATION ───────────────────────────────────────────────────
+    # ── STAGE 2: ANNOTATION ───────────────────────────────────────────────────
     elif stage == "annotation":
         datapoints = get_datapoints(data["scenario_id"])
         idx = len(data["annotations"])
 
         if idx < len(datapoints):
             dp = datapoints[idx]
-            # Record when this item was first shown
             start_key = f"anno_start_{idx}"
             if start_key not in st.session_state:
                 st.session_state[start_key] = datetime.utcnow().isoformat()
@@ -937,22 +795,16 @@ def main():
                 height=0,
             )
             st.markdown(
-                f"<div class='step-label'>Step 4 of 4 — Post {idx+1} of {len(datapoints)}</div>",
+                f"<div class='step-label'>Step 2 of 2 -- Post {idx+1} of {len(datapoints)}</div>",
                 unsafe_allow_html=True
             )
             st.title("Annotating social media posts")
-            prog(idx, len(datapoints))  # Fix #7: starts at 0%, hits 100% when all done
-            if idx == 0:  # Fix #8: only show instructions on first post
+            prog(idx, len(datapoints))
+            if idx == 0:
                 st.write(
                     "You'll now read and annotate ten social media posts. "
-                    "There are no right or wrong answers — your interpretation is the data."
+                    "There are no right or wrong answers -- your interpretation is the data."
                 )
-
-            # Q&A + narrative accessible as collapsible above the post
-            with st.expander("Your lived experience narrative (tap to view)", expanded=False):
-                # render_chat_replay(data["elicitation"])
-                # st.markdown("---")
-                st.markdown(f"*{data['micronarrative']}*")
 
             # Instruction BEFORE the passage (improves flow)
             st.markdown("**Read the post below, then answer the questions.**")
@@ -964,16 +816,16 @@ def main():
                 unsafe_allow_html=True,
             )
 
-            # Q1 — outside form so state persists across re-renders (#4 fix)
+            # Q1 -- outside form so state persists across re-renders (#4 fix)
             st.markdown("**1. How would you label this post?**")
             label = st.radio(
                 "",
                 options=[
-                    "Clearly harmful — targets a group in a way that dehumanises or incites",
-                    "Likely harmful — framing that would harm most readers from the targeted group, even if deniable",
-                    "Ambiguous — could be read as harmful or legitimate depending on who is reading and why",
-                    "Likely not harmful — critical or provocative, but the harm reading requires a stretch",
-                    "Not harmful — policy concern, cultural commentary, or frustration with no hateful subtext",
+                    "Clearly harmful -- targets a group in a way that dehumanises or incites",
+                    "Likely harmful -- framing that would harm most readers from the targeted group, even if deniable",
+                    "Ambiguous -- could be read as harmful or legitimate depending on who is reading and why",
+                    "Likely not harmful -- critical or provocative, but the harm reading requires a stretch",
+                    "Not harmful -- policy concern, cultural commentary, or frustration with no hateful subtext",
                 ],
                 index=None,
                 label_visibility="collapsed",
@@ -982,13 +834,13 @@ def main():
 
             st.markdown("---")
 
-            # Q2 — outside form
+            # Q2 -- outside form
             st.markdown("**2. Who, if anyone, does this post seem directed at?**")
             target = st.selectbox(
                 "",
                 options=[
-                    "— select —",
-                    "No one — I don't read this as targeting anyone",
+                    "-- select --",
+                    "No one -- I don't read this as targeting anyone",
                     "A specific individual",
                     "Immigrants, refugees, or a racialised group",
                     "A religious community",
@@ -1003,12 +855,11 @@ def main():
 
             st.markdown("---")
 
-            # Q3 — outside form: live word counter works here (#4 fix)
+            # Q3 -- outside form: live word counter works here (#4 fix)
             st.markdown(f"**3. Your rationale** *(minimum {MIN_RATIONALE_WORDS} words)*")
             st.caption(
                 "What specific language, framing, or context shaped your judgement? "
-                "Did any aspect of your identity, beliefs, values, or lived experience "
-                "affect how you read this post?"
+                "Walk us through your reasoning."
             )
             rationale = st.text_area(
                 "",
@@ -1021,7 +872,7 @@ def main():
 
             st.markdown("---")
 
-            # Q4 + submit button — only these need a form to batch the submit action
+            # Q4 + submit button -- only these need a form to batch the submit action
             with st.form(f"anno_{idx}"):
                 st.markdown(
                     "**4. How relevant did your identity or personal experience feel "
@@ -1033,20 +884,20 @@ def main():
                 submitted = st.form_submit_button("Submit & next →", type="primary")
 
                 if submitted:
-                    # Read Q1–Q3 from session state (set outside form above)
+                    # Read Q1-Q3 from session state (set outside form above)
                     label = st.session_state.get(f"label_{idx}")
-                    target = st.session_state.get(f"target_{idx}", "— select —")
+                    target = st.session_state.get(f"target_{idx}", "-- select --")
                     rationale = st.session_state.get(f"rationale_{idx}", "")
                     rationale_words = len(rationale.strip().split()) if rationale.strip() else 0
 
                     errors = []
                     if label is None:
                         errors.append("Please select a label for question 1.")
-                    if target == "— select —":
+                    if target == "-- select --":
                         errors.append("Please select an option for question 2.")
                     if rationale_words < MIN_RATIONALE_WORDS:
                         errors.append(
-                            f"Your rationale is {rationale_words} words — please expand to at least "
+                            f"Your rationale is {rationale_words} words -- please expand to at least "
                             f"{MIN_RATIONALE_WORDS} words. The detail you provide is the most valuable "
                             "part of the study."
                         )
@@ -1078,22 +929,10 @@ def main():
                         st.rerun()
 
         else:
-            # All annotations done — advance to reflexivity stage
+            # All annotations done -- advance to reflexivity stage
             data["workflow_stage"] = "reflexivity"
             st.session_state.pdata = data
             st.rerun()
-            # with st.spinner("Saving your responses securely…"):
-            #     try:
-            #         save_complete_to_gcs(data)
-            #         data["workflow_stage"] = "complete"
-            #         st.session_state.pdata = data
-            #         st.rerun()
-            #     except Exception as e:
-            #         st.error(
-            #             "Failed to save your responses. Please leave this window open "
-            #             "and contact the researcher."
-            #             f"Error: {e}"
-            #         )
             
     # ── COMPLETE ──────────────────────────────────────────────────────────────
     # elif stage == "complete":
@@ -1101,7 +940,7 @@ def main():
     #     st.title("Thank you.")
     #     st.markdown(
     #         "Your annotations and narrative are saved. "
-    #         "The perspectives you bring — including your background and lived experience — "
+    #         "The perspectives you bring -- including your background and lived experience -- "
     #         "are what makes this kind of research meaningful."
     #     )
     #     st.caption("Data stored securely · You may close this window.")
@@ -1117,7 +956,7 @@ def main():
         st.title("Thank you.")
         st.markdown(
             "Your annotations and narrative are saved. "
-            "The perspectives you bring — including your background and lived experience — "
+            "The perspectives you bring -- including your background and lived experience -- "
             "are what makes this kind of research meaningful."
         )
         # prolific_pid = data.get("prolific_pid")
@@ -1139,15 +978,6 @@ def main():
             )
         st.caption("Data stored securely.")
 
-RUN_PILOT = True  # Set to False to run the control study instead
 
 if __name__ == "__main__":
-    if RUN_PILOT:
-        main()
-    else:
-        from control_study import main as control_main
-        control_main()
-
-
-# if __name__ == "__main__":
-#     main()
+    main()
