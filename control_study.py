@@ -648,7 +648,7 @@ def main():
                 """
 **Purpose:** This study examines how people interpret ambiguous social media content. Your judgements and reasoning are the data.
 
-**What you'll do:** Share a few background details, then annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
+**What you'll do:** Annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
 
 **Data & consent:** Responses are stored securely and used for academic research only. Your rationales may be quoted anonymously in publications. You may stop at any time -- incomplete responses will not be used.
 
