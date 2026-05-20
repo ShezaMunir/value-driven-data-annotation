@@ -204,7 +204,7 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         "prolific_session_id": session_id,
         "created_at": datetime.utcnow().isoformat(),
         "condition": "no_elicitation",           # ← control arm marker
-        "scenario_id": "A",
+        "scenario_id": "B",
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],                        # always empty in control arm
