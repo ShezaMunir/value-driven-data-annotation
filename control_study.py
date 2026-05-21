@@ -638,8 +638,8 @@ def main():
         st.markdown("*A content annotation study*")
         st.markdown("---")
         st.markdown(
-            "This study takes about 20-25 minutes. You'll answer a few background questions, "
-            "then read and annotate a small set of social media posts. "
+            "This study takes about 20-25 minutes. You'll "
+            "read and annotate a small set of social media posts, provide your thoughts on each post, and complete a brief survey. "
             "There are no right or wrong answers."
         )
 
@@ -648,7 +648,7 @@ def main():
                 """
 **Purpose:** This study examines how people interpret ambiguous social media content. Your judgements and reasoning are the data.
 
-**What you'll do:** Annotate 10 social media posts on topics including immigration, religion, and gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
+**What you'll do:** Annotate 10 social media posts on topics around gender identity. Posts contain no slurs or explicit threats, but some may feel personally resonant.
 
 **Data & consent:** Responses are stored securely and used for academic research only. Your rationales may be quoted anonymously in publications. You may stop at any time -- incomplete responses will not be used.
 
