@@ -303,7 +303,6 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3,
-            extra_body={"think": False} 
         )
         content = response.choices[0].message.content.strip()
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
