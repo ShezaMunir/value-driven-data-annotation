@@ -287,7 +287,7 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3,
-            reasoning_format="parsed"    
+            reasoning_format="hidden"    
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
