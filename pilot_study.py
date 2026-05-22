@@ -54,7 +54,6 @@ from google.cloud import storage
 from google.oauth2 import service_account
 import uuid
 from reflexivity_stage import render_reflexivity_stage
-import re
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -278,21 +277,6 @@ def get_datapoints(sid: str) -> list:
 #     except Exception as e:
 #         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
-# def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
-#     if GROQ_TOKEN == "INSERT_GROQ_TOKEN_HERE":
-#         return "[Set GROQ_TOKEN to enable the AI interviewer — see README.]"
-#     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
-#     try:
-#         response = client.chat.completions.create(
-#             model="qwen/qwen3-32b",
-#             messages=formatted_messages,
-#             max_tokens=max_tokens,
-#             temperature=0.3
-#         )
-#         return response.choices[0].message.content.strip()
-#     except Exception as e:
-#         return f"[Model temporarily unavailable: {e}. Please try again.]"
-
 def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     if GROQ_TOKEN == "INSERT_GROQ_TOKEN_HERE":
         return "[Set GROQ_TOKEN to enable the AI interviewer — see README.]"
@@ -303,12 +287,12 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3,
+            extra_body={"think": False}   # ← disables thinking mode
         )
-        content = response.choices[0].message.content.strip()
-        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-        return content
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
+
 
 AXES_CONTEXT = """\
 You are conducting a qualitative lived-experience elicitation as part of an academic study on annotation and positionality. \
@@ -451,6 +435,7 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "", elicit
 # - Friendly, natural, warm tone — not clinical or academic.
 # - Do not include a title or preamble. Output ONLY the narrative text.\
 # """
+
 SYNTHESIS_SYS = """\
 You are writing a first-person positionality narrative for an academic annotation study.
 
@@ -905,7 +890,7 @@ def main():
                 # Fix #1: recount AFTER appending so turn number is accurate
                 current_turn = sum(1 for m in data["elicitation"] if m["role"] == "user")
                 sys_p = elicitation_sys(scenario, current_turn, user_input, data["elicitation"])
-                response = call_qwen(sys_p, data["elicitation"], max_tokens=800)
+                response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
 
                 if "READY_TO_BUILD" in response:
                     clean = response.replace("READY_TO_BUILD", "").strip()
@@ -936,17 +921,36 @@ def main():
         # Q&A replay shown above the narrative
         render_chat_replay(data["elicitation"])
 
+        # if not data.get("micronarrative"):
+        #     with st.spinner("Drafting your narrative…"):
+        #         fragments = "\n".join(
+        #             m["content"] for m in data["elicitation"] if m["role"] == "user"
+        #         )
+        #         result = call_qwen(
+        #             SYNTHESIS_SYS,
+        #             [{"role": "user", "content": fragments}],
+        #             max_tokens=400
+        #         )
+        #         # Fix #11: don't save error strings as the narrative
+        #         if result.startswith("["):
+        #             st.error("Couldn't reach the AI model. Please try regenerating in a moment.")
+        #             st.stop()
+        #         data["micronarrative"] = result
+
         if not data.get("micronarrative"):
             with st.spinner("Drafting your narrative…"):
-                fragments = "\n".join(
-                    m["content"] for m in data["elicitation"] if m["role"] == "user"
-                )
+                # Build a structured transcript instead of raw fragments
+                transcript_lines = [f"SCENARIO:\n{scenario['vignette']}\n\nINTERVIEW TRANSCRIPT:"]
+                for m in data["elicitation"]:
+                    role_label = "Interviewer" if m["role"] == "assistant" else "Participant"
+                    transcript_lines.append(f"{role_label}: {m['content']}")
+                transcript = "\n".join(transcript_lines)
+
                 result = call_qwen(
                     SYNTHESIS_SYS,
-                    [{"role": "user", "content": fragments}],
-                    max_tokens=1200
+                    [{"role": "user", "content": transcript}],
+                    max_tokens=600
                 )
-                # Fix #11: don't save error strings as the narrative
                 if result.startswith("["):
                     st.error("Couldn't reach the AI model. Please try regenerating in a moment.")
                     st.stop()
