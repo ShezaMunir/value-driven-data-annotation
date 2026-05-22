@@ -1059,7 +1059,7 @@ def main():
                             "part of the study."
                         )
                     if salience is None:
-                        errors.append("Please move the slider in question 4.")
+                        errors.append("Please select an option for question 4.")
 
                     if errors:
                         for e in errors:
