@@ -47,7 +47,8 @@ import streamlit as st
 import json
 import random
 from datetime import datetime
-from huggingface_hub import InferenceClient
+# from huggingface_hub import InferenceClient
+from groq import Groq
 import os
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -56,12 +57,19 @@ from reflexivity_stage import render_reflexivity_stage
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-try:
-    HF_TOKEN = st.secrets["HF_TOKEN"]
-except KeyError:
-    HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
+# try:
+#     HF_TOKEN = st.secrets["HF_TOKEN"]
+# except KeyError:
+#     HF_TOKEN = os.environ.get("HF_TOKEN", "INSERT_HF_TOKEN_HERE")
 
-client = InferenceClient(api_key=HF_TOKEN)
+# client = InferenceClient(api_key=HF_TOKEN)
+
+try:
+    GROQ_TOKEN = st.secrets["GROQ_TOKEN"]
+except KeyError:
+    GROQ_TOKEN = os.environ.get("GROQ_TOKEN", "INSERT_GROQ_TOKEN_HERE")
+
+client = Groq(api_key=GROQ_TOKEN)
 
 # SHEET_URL = "https://docs.google.com/spreadsheets/d/1xAvNGAvny-1uCS2s2Iw4ij5OG1gF1LjKAdbLlcDnAkM/edit"
 GCS_BUCKET = st.secrets["gcs_config"]["bucket_name"]
@@ -254,13 +262,28 @@ def get_datapoints(sid: str) -> list:
 
 # ─── LLM ──────────────────────────────────────────────────────────────────────
 
+# def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
+#     if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
+#         return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
+#     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
+#     try:
+#         response = client.chat_completion(
+#             model="Qwen/Qwen2.5-7B-Instruct",
+#             messages=formatted_messages,
+#             max_tokens=max_tokens,
+#             temperature=0.3
+#         )
+#         return response.choices[0].message.content.strip()
+#     except Exception as e:
+#         return f"[Model temporarily unavailable: {e}. Please try again.]"
+
 def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
-    if HF_TOKEN == "INSERT_HF_TOKEN_HERE":
-        return "[Set HF_TOKEN to enable the AI interviewer — see README.]"
+    if GROQ_TOKEN == "INSERT_GROQ_TOKEN_HERE":
+        return "[Set GROQ_TOKEN to enable the AI interviewer — see README.]"
     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
     try:
-        response = client.chat_completion(
-            model="Qwen/Qwen2.5-7B-Instruct",
+        response = client.chat.completions.create(
+            model="qwen/qwen3-32b",
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3
@@ -268,7 +291,6 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
-
 
 AXES_CONTEXT = """\
 You are conducting a qualitative lived-experience elicitation as part of an academic study on annotation and positionality. \
