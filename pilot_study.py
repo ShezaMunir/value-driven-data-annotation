@@ -886,7 +886,7 @@ def main():
                 # Fix #1: recount AFTER appending so turn number is accurate
                 current_turn = sum(1 for m in data["elicitation"] if m["role"] == "user")
                 sys_p = elicitation_sys(scenario, current_turn, user_input, data["elicitation"])
-                response = call_qwen(sys_p, data["elicitation"], max_tokens=180)
+                response = call_qwen(sys_p, data["elicitation"], max_tokens=800)
 
                 if "READY_TO_BUILD" in response:
                     clean = response.replace("READY_TO_BUILD", "").strip()
