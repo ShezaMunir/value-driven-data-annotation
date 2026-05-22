@@ -54,6 +54,7 @@ from google.cloud import storage
 from google.oauth2 import service_account
 import uuid
 from reflexivity_stage import render_reflexivity_stage
+import re
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -277,6 +278,21 @@ def get_datapoints(sid: str) -> list:
 #     except Exception as e:
 #         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
+# def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
+#     if GROQ_TOKEN == "INSERT_GROQ_TOKEN_HERE":
+#         return "[Set GROQ_TOKEN to enable the AI interviewer — see README.]"
+#     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
+#     try:
+#         response = client.chat.completions.create(
+#             model="qwen/qwen3-32b",
+#             messages=formatted_messages,
+#             max_tokens=max_tokens,
+#             temperature=0.3,
+#             reasoning_format="none"    
+#         )
+#         return response.choices[0].message.content.strip()
+#     except Exception as e:
+#         return f"[Model temporarily unavailable: {e}. Please try again.]"
 def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     if GROQ_TOKEN == "INSERT_GROQ_TOKEN_HERE":
         return "[Set GROQ_TOKEN to enable the AI interviewer — see README.]"
@@ -287,9 +303,19 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3,
-            reasoning_format="none"    
+            reasoning_format="hidden"
         )
-        return response.choices[0].message.content.strip()
+        # reasoning_format="hidden" puts final answer in content but may also
+        # populate message.reasoning — check both
+        msg = response.choices[0].message
+        content = msg.content or ""
+        if not content.strip() and hasattr(msg, "reasoning") and msg.reasoning:
+            content = msg.reasoning  # fallback if content is empty
+        content = content.strip()
+        import re
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        content = re.sub(r"<think>.*", "", content, flags=re.DOTALL).strip()
+        return content
     except Exception as e:
         return f"[Model temporarily unavailable: {e}. Please try again.]"
 
