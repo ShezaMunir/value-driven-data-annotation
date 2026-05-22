@@ -841,7 +841,15 @@ def main():
                     "to how much this post resonated with you?**"
                 )
                 st.caption("1 = not at all relevant to my identity or experience · 5 = very much so")
-                salience = st.slider("", 1, 5, value=None, label_visibility="collapsed")
+                # salience = st.slider("", 1, 5, value=None, label_visibility="collapsed")
+                salience = st.radio(
+                        "",
+                        options=[1, 2, 3, 4, 5],
+                        index=None,               # truly no default
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key=f"salience_{idx}",
+                    )
 
                 submitted = st.form_submit_button("Submit & next →", type="primary")
 
@@ -864,7 +872,8 @@ def main():
                             "part of the study."
                         )
                     if salience is None:
-                        errors.append("Please move the slider in question 4.")
+                        errors.append("Please select an option for question 4.")
+
 
                     if errors:
                         for e in errors:
