@@ -4,3 +4,4 @@ huggingface_hub
 st-gsheets-connection
 pandas
 google-cloud-storage==2.18.2
+groq
