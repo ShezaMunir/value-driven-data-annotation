@@ -944,7 +944,7 @@ def main():
                 result = call_qwen(
                     SYNTHESIS_SYS,
                     [{"role": "user", "content": fragments}],
-                    max_tokens=400
+                    max_tokens=1200
                 )
                 # Fix #11: don't save error strings as the narrative
                 if result.startswith("["):
