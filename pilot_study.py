@@ -302,7 +302,7 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             model="qwen/qwen3-32b",
             messages=formatted_messages,
             max_tokens=max_tokens,
-            temperature=0.3
+            temperature=0.3,
             extra_body={"think": False} 
         )
         content = response.choices[0].message.content.strip()
