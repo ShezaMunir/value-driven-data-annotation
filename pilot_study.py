@@ -438,16 +438,35 @@ def elicitation_sys(scenario: dict, user_turns: int, last_user: str = "", elicit
     return p
 
 
+# SYNTHESIS_SYS = """\
+# Write a first-person narrative (minimum 120 words) that faithfully captures what this participant shared.
+
+# Rules:
+# - Use 'I' throughout.
+# - Preserve the participant's own specific words and phrases wherever possible — do not sanitise their voice.
+# - Do NOT add feelings, interpretations, or experiences they did not express.
+# - Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
+# emotional response, sense of identity or belonging, relationship to the community depicted).
+# - The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
+# - Friendly, natural, warm tone — not clinical or academic.
+# - Do not include a title or preamble. Output ONLY the narrative text.\
+# """
 SYNTHESIS_SYS = """\
-Write a first-person narrative (minimum 120 words) that faithfully captures what this participant shared.
+You are writing a first-person positionality narrative for an academic annotation study.
+
+The participant read a scenario and was interviewed about their lived experience. \
+You will be given the scenario text, the interview questions, and the participant's replies. \
+Your job is to synthesise ONLY what the participant actually said into a coherent first-person narrative.
 
 Rules:
 - Use 'I' throughout.
 - Preserve the participant's own specific words and phrases wherever possible — do not sanitise their voice.
 - Do NOT add feelings, interpretations, or experiences they did not express.
+- Ground the narrative in the scenario they read — the narrative should make clear how their experiences \
+relate to the themes in that specific scenario (community, belonging, conflict, identity, etc.).
 - Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
 emotional response, sense of identity or belonging, relationship to the community depicted).
-- The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
+- Minimum 120 words. The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
 - Friendly, natural, warm tone — not clinical or academic.
 - Do not include a title or preamble. Output ONLY the narrative text.\
 """
