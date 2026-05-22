@@ -1024,8 +1024,8 @@ def main():
             # Q4 + submit button — only these need a form to batch the submit action
             with st.form(f"anno_{idx}"):
                 st.markdown(
-                    "**4. How relevant did your identity or personal experience feel "
-                    "to how much this post resonated with you?**"
+                    "**4. How much did your own identity or lived experience "
+                    "shape the way you read this post?**"
                 )
                 st.caption("1 = not at all relevant to my identity or experience · 5 = very much so")
                 # salience = st.slider("", 1, 5, value=None, label_visibility="collapsed")
