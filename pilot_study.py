@@ -477,9 +477,13 @@ Rules:
 relate to the themes in that specific scenario (community, belonging, conflict, identity, etc.).
 - Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
 emotional response, sense of identity or belonging, relationship to the community depicted).
-- Minimum 120 words. The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary.
+- Minimum 120 words. The narrative should read as a coherent, flowing piece of personal reflection — not a bullet list or summary. If a response was thin (e.g. one word or a short phrase), reflect that thinness — write one sentence about it, not a paragraph.
+- Length should be proportional to how much the participant actually shared. A participant who gave brief answers gets a short narrative (60-80 words). Do not pad.
 - Friendly, natural, warm tone — not clinical or academic.
-- Do not include a title or preamble. Output ONLY the narrative text.\
+- Do not include a title or preamble. Output ONLY the narrative text.
+- Do NOT invent details, emotions, sensory descriptions, metaphors, or scenes the participant did not mention.
+- Do NOT dramatise. No trembling hands, no armor metaphors, no novelistic imagery. Plain, grounded language only.
+\
 """
 
 # ─── Styles ───────────────────────────────────────────────────────────────────
