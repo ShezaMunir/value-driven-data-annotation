@@ -242,7 +242,7 @@ def init_participant(prolific_pid=None, study_id=None, session_id=None) -> dict:
         # "resumed_at": None,
         # "paused_at": None,
         # "scenario_id": random.choice(SCENARIOS)["id"], # uncomment this for main study
-        "scenario_id": "A",
+        "scenario_id": "B",
         "workflow_stage": "disclosure",
         "disclosure": {},
         "elicitation": [],
