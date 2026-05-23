@@ -472,7 +472,7 @@ Your job is to synthesise ONLY what the participant actually said into a coheren
 Rules:
 - Use 'I' throughout.
 - Preserve the participant's own specific words and phrases wherever possible — do not sanitise their voice.
-- Do NOT add feelings, interpretations, or experiences they did not express.
+- Do NOT add feelings, interpretations, details or experiences they did not express.
 - Ground the narrative in the scenario they read — the narrative should make clear how their experiences \
 relate to the themes in that specific scenario (community, belonging, conflict, identity, etc.).
 - Cover at least three distinct dimensions of lived experience (e.g. cultural background, personal memory, \
