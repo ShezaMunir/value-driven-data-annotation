@@ -299,7 +299,7 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
     formatted_messages = [{"role": "system", "content": system_prompt}] + messages
     try:
         response = client.chat.completions.create(
-            model="qwen/qwen3-32b",
+            model="qwen/qwen3.6-27b",
             messages=formatted_messages,
             max_tokens=max_tokens,
             temperature=0.3,
