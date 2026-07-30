@@ -306,7 +306,7 @@ def call_qwen(system_prompt: str, messages: list, max_tokens: int = 200) -> str:
             reasoning_effort="none",     # non-thinking mode: fast, conversational, no hidden reasoning to eat the token budget
             reasoning_format="hidden",   # kept as a safety net in case reasoning leaks through anyway
             stream=False,
-            
+
         )
         # reasoning_format="hidden" puts final answer in content but may also
         # populate message.reasoning — check both
@@ -1242,7 +1242,7 @@ def main():
             )
         st.caption("Data stored securely.")
 
-RUN_PILOT = True  # Set to False to run the control study instead
+RUN_PILOT = False  # Set to False to run the control study instead
 
 if __name__ == "__main__":
     if RUN_PILOT:
