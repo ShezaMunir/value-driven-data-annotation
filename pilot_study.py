@@ -1242,7 +1242,7 @@ def main():
             )
         st.caption("Data stored securely.")
 
-RUN_PILOT = True  # Set to False to run the control study instead
+RUN_PILOT = False  # Set to False to run the control study instead
 
 if __name__ == "__main__":
     if RUN_PILOT:
